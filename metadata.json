@@ -1,0 +1,6 @@
+{
+  "name": "BI Sales Dashboard",
+  "description": "Enterprise dashboard for analyzing and exporting multi-dimensional sales data. Supports CSV data source with dynamic insights generation, full PDF/PPTX export options, slicer-based custom data views.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}

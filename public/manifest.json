@@ -1,0 +1,27 @@
+{
+  "name": "BI Sales Dashboard",
+  "short_name": "Sales BI",
+  "description": "Enterprise Sales Intelligence Dashboard",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f9fafb",
+  "theme_color": "#2563eb",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/3201/3201521.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/3201/3201521.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
