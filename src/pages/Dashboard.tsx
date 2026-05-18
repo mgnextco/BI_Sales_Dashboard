@@ -9,7 +9,7 @@ import { generateInsights } from "../lib/gemini";
 import { 
   Sun, Moon, Download, FileText, Presentation, 
   Save, Expand, X, BrainCircuit, Loader2, Image as ImageIcon, FileSpreadsheet, ArrowLeft, Smartphone,
-  BarChart3, DollarSign, Target, Activity, TrendingUp
+  BarChart3, DollarSign, Target, Activity, TrendingUp, LogOut
 } from "lucide-react";
 import { 
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, 
@@ -20,10 +20,12 @@ interface DashboardProps {
   data: DataRow[];
   theme: "light" | "dark";
   toggleTheme: () => void;
-  onSaveVersion: (filters: FilterState) => void;
   onBack: () => void;
-  savedVersions?: { id: string; date: string; rows: number }[];
+  savedVersions?: { id: string; name: string; date: string; rows: number }[];
   onLoadVersion?: (id: string) => void;
+  onDeleteVersion?: (id: string) => void;
+  onRenameVersion?: (id: string, newName: string) => void;
+  onLogout?: () => void;
   onInstall?: () => void;
   initialFilters?: FilterState | null;
   userEmail: string;
@@ -31,8 +33,8 @@ interface DashboardProps {
 
 const COLORS = ["#2563eb", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899", "#14b8a6", "#f43f5e", "#84cc16"];
 
-export function Dashboard({ data, theme, toggleTheme, onSaveVersion, onBack, savedVersions, onLoadVersion, onInstall, initialFilters, userEmail }: DashboardProps) {
-  const [isSlicerExpanded, setIsSlicerExpanded] = useState(true);
+export function Dashboard({ data, theme, toggleTheme, onBack, savedVersions, onLoadVersion, onDeleteVersion, onRenameVersion, onLogout, onInstall, initialFilters, userEmail }: DashboardProps) {
+  const [isSlicerExpanded, setIsSlicerExpanded] = useState(false);
   const [showInsightsOverlay, setShowInsightsOverlay] = useState(false);
   const [aiInsights, setAiInsights] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
@@ -610,10 +612,6 @@ export function Dashboard({ data, theme, toggleTheme, onSaveVersion, onBack, sav
           <button type="button" onClick={handleExportPPTX} className="p-2 text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors" title="Export Dashboard PPTX">
             <Presentation size={18} />
           </button>
-          <button type="button" onClick={() => onSaveVersion(filters)} className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/20 dark:hover:bg-blue-900/40 dark:text-blue-400 rounded-lg transition-colors" title="Save Version">
-            <Save size={16} />
-            Save Version
-          </button>
           
           {onInstall && (
             <button 
@@ -631,6 +629,16 @@ export function Dashboard({ data, theme, toggleTheme, onSaveVersion, onBack, sav
             <span className="text-[10px] uppercase tracking-wider font-bold text-gray-400">Account</span>
             <span className="text-xs font-medium text-gray-600 dark:text-gray-300">{userEmail}</span>
           </div>
+          {onLogout && (
+            <button 
+              type="button" 
+              onClick={onLogout} 
+              className="p-2 text-gray-400 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors" 
+              title="Logout / Start Over"
+            >
+              <LogOut size={18} />
+            </button>
+          )}
           <button type="button" onClick={toggleTheme} className="p-2 text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors" title="Toggle Theme">
             {theme === "light" ? <Moon size={18} /> : <Sun size={18} />}
           </button>
@@ -647,6 +655,7 @@ export function Dashboard({ data, theme, toggleTheme, onSaveVersion, onBack, sav
           setIsExpanded={setIsSlicerExpanded}
           savedVersions={savedVersions}
           onLoadVersion={onLoadVersion}
+          onDeleteVersion={onDeleteVersion}
         />
 
         {/* Main Content Area */}

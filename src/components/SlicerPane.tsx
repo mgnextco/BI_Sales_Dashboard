@@ -1,6 +1,6 @@
-import React from "react";
+import React, { useState } from "react";
 import { FilterState, DataRow } from "../types";
-import { ChevronLeft, ChevronRight, FilterX, History, Filter } from "lucide-react";
+import { ChevronLeft, ChevronRight, FilterX, History, Filter, Trash2, Edit2, Check, X } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 
 interface SlicerPaneProps {
@@ -9,11 +9,39 @@ interface SlicerPaneProps {
   setFilters: React.Dispatch<React.SetStateAction<FilterState>>;
   isExpanded: boolean;
   setIsExpanded: (val: boolean) => void;
-  savedVersions?: { id: string; date: string; rows: number }[];
+  savedVersions?: { id: string; name: string; date: string; rows: number }[];
   onLoadVersion?: (id: string) => void;
+  onDeleteVersion?: (id: string) => void;
+  onRenameVersion?: (id: string, newName: string) => void;
 }
 
-export function SlicerPane({ data, filters, setFilters, isExpanded, setIsExpanded, savedVersions = [], onLoadVersion }: SlicerPaneProps) {
+export function SlicerPane({ data, filters, setFilters, isExpanded, setIsExpanded, savedVersions = [], onLoadVersion, onDeleteVersion, onRenameVersion }: SlicerPaneProps) {
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
+
+  const startRename = (id: string, currentName: string) => {
+    setEditingId(id);
+    setEditName(currentName);
+    setConfirmDeleteId(null);
+  };
+
+  const handleRenameSubmit = (id: string) => {
+    if (editName.trim() && onRenameVersion) {
+      onRenameVersion(id, editName.trim());
+    }
+    setEditingId(null);
+  };
+
+  const handleDeleteClick = (id: string) => {
+    if (confirmDeleteId === id) {
+      onDeleteVersion && onDeleteVersion(id);
+      setConfirmDeleteId(null);
+    } else {
+      setConfirmDeleteId(id);
+      setEditingId(null);
+    }
+  };
   const getUniqueValues = (key: keyof DataRow) => {
     const values = Array.from(new Set(data.map(d => String(d[key]))));
     if (key === "Month") {
@@ -134,15 +162,83 @@ export function SlicerPane({ data, filters, setFilters, isExpanded, setIsExpande
                  </div>
                  <div className="space-y-2">
                    {savedVersions.map(v => (
-                     <button
-                       type="button"
-                       key={v.id}
-                       onClick={() => onLoadVersion && onLoadVersion(v.id)}
-                       className="w-full text-left p-2 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-blue-500 text-sm bg-gray-50 dark:bg-gray-800/50 group transition-colors"
-                     >
-                       <div className="font-medium text-gray-900 dark:text-gray-100">{new Date(v.date).toLocaleDateString()}</div>
-                       <div className="text-xs text-gray-500">{new Date(v.date).toLocaleTimeString()} • {v.rows} rows</div>
-                     </button>
+                     <div key={v.id} className="group/version relative flex w-full">
+                       {editingId === v.id ? (
+                         <div className="w-full text-left p-2 rounded-lg border border-blue-500 text-sm bg-gray-50 dark:bg-gray-800/50 block">
+                            <div className="flex items-center gap-1 mb-1">
+                              <input
+                                type="text"
+                                value={editName}
+                                autoFocus
+                                onChange={(e) => setEditName(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') handleRenameSubmit(v.id);
+                                  if (e.key === 'Escape') setEditingId(null);
+                                }}
+                                className="flex-1 w-full bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded px-1 py-0.5 text-xs font-semibold text-gray-900 dark:text-gray-100 min-w-0"
+                              />
+                              <button onClick={() => handleRenameSubmit(v.id)} className="text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 rounded">
+                                <Check size={14} />
+                              </button>
+                              <button onClick={() => setEditingId(null)} className="text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 rounded">
+                                <X size={14} />
+                              </button>
+                            </div>
+                            <div className="text-[10px] text-gray-500">{new Date(v.date).toLocaleDateString()}</div>
+                         </div>
+                       ) : (
+                         <>
+                           <button
+                             type="button"
+                             onClick={() => onLoadVersion && onLoadVersion(v.id)}
+                             className="w-full text-left p-2 pr-16 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-blue-500 text-sm bg-gray-50 dark:bg-gray-800/50 transition-colors"
+                           >
+                             <div className="font-medium text-gray-900 dark:text-gray-100 truncate text-xs">{v.name}</div>
+                             <div className="text-[10px] text-gray-500">{new Date(v.date).toLocaleDateString()} {new Date(v.date).toLocaleTimeString()} • {v.rows} rows</div>
+                           </button>
+                           <div className="absolute top-1/2 -translate-y-1/2 right-2 flex items-center gap-1">
+                             {onRenameVersion && !confirmDeleteId && (
+                               <button
+                                 type="button"
+                                 onClick={(e) => { e.stopPropagation(); startRename(v.id, v.name); }}
+                                 className="text-gray-400 hover:text-blue-500 transition-colors p-1 bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 opacity-60 hover:opacity-100"
+                                 title="Rename Version"
+                               >
+                                 <Edit2 size={12} />
+                               </button>
+                             )}
+                             
+                             <div className="flex items-center gap-1">
+                               {confirmDeleteId === v.id && (
+                                 <button
+                                   type="button"
+                                   onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(null); }}
+                                   className="text-gray-400 hover:text-gray-600 transition-colors bg-white dark:bg-gray-800 p-1 rounded-md shadow-sm border border-gray-200 dark:border-gray-700"
+                                   title="Cancel"
+                                 >
+                                   <X size={12} />
+                                 </button>
+                               )}
+                               {onDeleteVersion && (
+                                 <button
+                                   type="button"
+                                   onClick={(e) => { e.stopPropagation(); handleDeleteClick(v.id); }}
+                                   className={`transition-all p-1 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 flex items-center gap-1 ${
+                                     confirmDeleteId === v.id 
+                                       ? "bg-red-500 text-white border-red-500 opacity-100" 
+                                       : "text-gray-400 hover:text-red-500 bg-white dark:bg-gray-800 opacity-60 hover:opacity-100"
+                                   }`}
+                                   title={confirmDeleteId === v.id ? "Click again to confirm delete" : "Delete Version"}
+                                 >
+                                   <Trash2 size={12} />
+                                   {confirmDeleteId === v.id && <span className="text-[10px] font-bold">Delete?</span>}
+                                 </button>
+                               )}
+                             </div>
+                           </div>
+                         </>
+                       )}
+                     </div>
                    ))}
                  </div>
               </div>

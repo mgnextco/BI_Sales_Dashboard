@@ -1,14 +1,17 @@
 import React, { useRef, useState } from "react";
 import { Footer } from "../components/Footer";
-import { Upload, Download, FileSpreadsheet, ChevronRight, AlertCircle, History, Sun, Moon, Smartphone, BarChart3 } from "lucide-react";
+import { Upload, Download, FileSpreadsheet, ChevronRight, AlertCircle, History, Sun, Moon, Smartphone, BarChart3, Trash2, Edit2, Check, X, LogOut } from "lucide-react";
 import { motion } from "motion/react";
 import Papa from "papaparse";
 import { DataRow } from "../types";
 
 interface IntroProps {
-  onDataLoaded: (data: DataRow[]) => void;
-  savedVersions: { id: string; date: string; rows: number }[];
+  onDataLoaded: (data: DataRow[], fileName?: string) => void;
+  savedVersions: { id: string; name: string; date: string; rows: number }[];
   onLoadVersion: (id: string) => void;
+  onDeleteVersion: (id: string) => void;
+  onRenameVersion?: (id: string, newName: string) => void;
+  onLogout?: () => void;
   theme: "light" | "dark";
   toggleTheme: () => void;
   onInstall?: () => void;
@@ -123,10 +126,36 @@ Central,BU Oncology,Enbrel,Immunology,Generic,Hannah Abbott,January,37943.48,233
 East,BU Consumer Health,Lipitor,Oncology,Generic,Diana Prince,April,26747.49,7589.04,48259.69
 North,BU Oncology,Aspirin,Cardiology,Original,Diana Prince,June,36515.6,1697.07,5136.34`;
 
-export function Intro({ onDataLoaded, savedVersions, onLoadVersion, theme, toggleTheme, onInstall, userEmail }: IntroProps) {
+export function Intro({ onDataLoaded, savedVersions, onLoadVersion, onDeleteVersion, onRenameVersion, onLogout, theme, toggleTheme, onInstall, userEmail }: IntroProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
+
+  const startRename = (id: string, currentName: string) => {
+    setEditingId(id);
+    setEditName(currentName);
+    setConfirmDeleteId(null);
+  };
+
+  const handleRenameSubmit = (id: string) => {
+    if (editName.trim() && onRenameVersion) {
+      onRenameVersion(id, editName.trim());
+    }
+    setEditingId(null);
+  };
+
+  const handleDeleteClick = (id: string) => {
+    if (confirmDeleteId === id) {
+      onDeleteVersion(id);
+      setConfirmDeleteId(null);
+    } else {
+      setConfirmDeleteId(id);
+      setEditingId(null);
+    }
+  };
 
   const handleDownloadTemplate = () => {
     const blob = new Blob([DUMMY_DATA], { type: "text/csv;charset=utf-8;" });
@@ -183,7 +212,7 @@ export function Intro({ onDataLoaded, savedVersions, onLoadVersion, theme, toggl
           "Past Year Value": Number(row["Past Year Value"]) || 0,
         }));
 
-        onDataLoaded(validData);
+        onDataLoaded(validData, file.name);
       },
       error: (error) => {
         setIsLoading(false);
@@ -211,6 +240,11 @@ export function Intro({ onDataLoaded, savedVersions, onLoadVersion, theme, toggl
             <span className="text-[10px] uppercase tracking-wider font-bold text-gray-400">Account</span>
             <span className="text-xs font-medium text-gray-600 dark:text-gray-300">{userEmail}</span>
           </div>
+          {onLogout && (
+            <button onClick={onLogout} className="p-2 text-gray-400 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors" title="Logout / Start Over">
+              <LogOut size={20} />
+            </button>
+          )}
           <button onClick={toggleTheme} className="p-2 text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
             {theme === "light" ? <Moon size={20} /> : <Sun size={20} />}
           </button>
@@ -288,22 +322,97 @@ export function Intro({ onDataLoaded, savedVersions, onLoadVersion, theme, toggl
             
             <div className="space-y-3 flex-1 overflow-y-auto pr-2 custom-scrollbar">
               {savedVersions.map((version) => (
-                <button
-                  key={version.id}
-                  onClick={() => onLoadVersion(version.id)}
-                  className="w-full text-left p-4 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-blue-500 dark:hover:border-blue-500 hover:shadow-sm bg-gray-50 dark:bg-gray-800/50 transition-all group"
-                >
-                  <div className="flex justify-between items-start mb-1">
-                    <span className="font-semibold text-gray-900 dark:text-gray-100">{new Date(version.date).toLocaleDateString()}</span>
-                    <span className="text-xs font-medium px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-full">
-                      {new Date(version.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between mt-2">
-                    <p className="text-sm text-gray-500 dark:text-gray-400">{version.rows.toLocaleString()} rows</p>
-                    <ChevronRight size={16} className="text-gray-400 group-hover:text-blue-500 transition-transform group-hover:translate-x-1" />
-                  </div>
-                </button>
+                <div key={version.id} className="relative group/version">
+                  {editingId === version.id ? (
+                    <div className="w-full text-left p-4 rounded-xl border border-blue-500 hover:shadow-sm bg-gray-50 dark:bg-gray-800/50 block">
+                      <div className="flex items-center gap-2 mb-2">
+                        <input
+                          type="text"
+                          value={editName}
+                          autoFocus
+                          onChange={(e) => setEditName(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') handleRenameSubmit(version.id);
+                            if (e.key === 'Escape') setEditingId(null);
+                          }}
+                          className="flex-1 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-md px-2 py-1 text-sm font-semibold text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                        <button onClick={() => handleRenameSubmit(version.id)} className="p-1 text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 rounded">
+                          <Check size={16} />
+                        </button>
+                        <button onClick={() => setEditingId(null)} className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded">
+                          <X size={16} />
+                        </button>
+                      </div>
+                      <div className="flex items-center justify-between mt-2">
+                        <div className="flex flex-col gap-1">
+                          <span className="text-xs text-gray-500">{new Date(version.date).toLocaleDateString()}</span>
+                          <p className="text-sm text-gray-500 dark:text-gray-400">{version.rows.toLocaleString()} rows</p>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <button
+                        onClick={() => onLoadVersion(version.id)}
+                        className="w-full text-left p-4 pr-[88px] rounded-xl border border-gray-200 dark:border-gray-700 hover:border-blue-500 dark:hover:border-blue-500 hover:shadow-sm bg-gray-50 dark:bg-gray-800/50 transition-all block"
+                      >
+                        <div className="flex justify-between items-start mb-1 gap-2">
+                          <span className="font-semibold text-gray-900 dark:text-gray-100 truncate">{version.name}</span>
+                          <span className="text-xs font-medium px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-full shrink-0">
+                            {new Date(version.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between mt-2">
+                          <div className="flex flex-col gap-1">
+                            <span className="text-xs text-gray-500">{new Date(version.date).toLocaleDateString()}</span>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">{version.rows.toLocaleString()} rows</p>
+                          </div>
+                          <ChevronRight size={16} className="text-gray-400 group-hover/version:text-blue-500 transition-transform group-hover/version:translate-x-1" />
+                        </div>
+                      </button>
+                      
+                      <div className="absolute top-1/2 -translate-y-1/2 right-4 flex items-center gap-1">
+                        {onRenameVersion && !confirmDeleteId && (
+                          <button
+                            type="button"
+                            onClick={() => startRename(version.id, version.name)}
+                            className="text-gray-400 hover:text-blue-500 transition-colors bg-white dark:bg-gray-800 p-2 rounded-full shadow-sm border border-gray-200 dark:border-gray-700 opacity-60 hover:opacity-100"
+                            title="Rename Version"
+                          >
+                            <Edit2 size={16} />
+                          </button>
+                        )}
+                        
+                        <div className="flex items-center gap-1">
+                          {confirmDeleteId === version.id && (
+                            <button
+                              type="button"
+                              onClick={() => setConfirmDeleteId(null)}
+                              className="text-gray-400 hover:text-gray-600 transition-colors bg-white dark:bg-gray-800 p-2 rounded-full shadow-sm border border-gray-200 dark:border-gray-700"
+                              title="Cancel"
+                            >
+                              <X size={16} />
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteClick(version.id)}
+                            className={`transition-all p-2 rounded-full shadow-sm border border-gray-200 dark:border-gray-700 flex items-center gap-1 ${
+                              confirmDeleteId === version.id 
+                                ? "bg-red-500 text-white border-red-500 opacity-100" 
+                                : "text-gray-400 hover:text-red-500 bg-white dark:bg-gray-800 opacity-60 hover:opacity-100"
+                            }`}
+                            title={confirmDeleteId === version.id ? "Click again to confirm delete" : "Delete Version"}
+                          >
+                            <Trash2 size={16} />
+                            {confirmDeleteId === version.id && <span className="text-[10px] font-bold pr-1">Confirm?</span>}
+                          </button>
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
               ))}
             </div>
           </motion.div>
