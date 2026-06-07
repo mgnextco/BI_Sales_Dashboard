@@ -4,7 +4,7 @@ interface FooterProps {
 }
 
 export function Footer({ theme }: FooterProps) {
-  const logoSrc = theme === "dark" ? "/logo_dark.png" : "/logo_light.png";
+  const logoSrc = "/logo_main.png";
 
   return (
     <footer className="w-full max-w-7xl mx-auto px-8 py-6 grid grid-cols-3 items-center">
@@ -17,9 +17,6 @@ export function Footer({ theme }: FooterProps) {
         />
       </div>
       <div className="flex justify-center sm:justify-end col-span-3 sm:col-span-1 mt-4 sm:mt-0">
-        <p className="text-xs text-gray-500 dark:text-gray-400 font-medium tracking-wide">
-          Michel Gamal ©All Rights Reserved
-        </p>
       </div>
     </footer>
   );

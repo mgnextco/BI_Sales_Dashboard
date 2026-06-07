@@ -9,7 +9,7 @@ import { generateInsights } from "../lib/gemini";
 import { 
   Sun, Moon, Download, FileText, Presentation, 
   Save, Expand, X, BrainCircuit, Loader2, Image as ImageIcon, FileSpreadsheet, ArrowLeft, Smartphone,
-  BarChart3, DollarSign, Target, Activity, TrendingUp, LogOut
+  BarChart3, DollarSign, Target, Activity, TrendingUp, LogOut, Palette as PaletteIcon
 } from "lucide-react";
 import { 
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, 
@@ -31,9 +31,44 @@ interface DashboardProps {
   userEmail: string;
 }
 
-const COLORS = ["#2563eb", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899", "#14b8a6", "#f43f5e", "#84cc16"];
+const PALETTES = [
+  {
+    id: "retro",
+    name: "Teal Retro",
+    colors: ["#108AB1", "#06D7A0", "#F78C6A", "#F04770", "#FFD167", "#073A4B"],
+    sales: "#108AB1",
+    target: "#F78C6A",
+    pastYear: "#FFD167",
+    success: "#06D7A0",
+    fail: "#F04770"
+  },
+  {
+    id: "royal",
+    name: "Royal Indigo",
+    colors: ["#4F46E5", "#10B981", "#EC4899", "#EF4444", "#8B5CF6", "#111827"],
+    sales: "#4F46E5",
+    target: "#EC4899",
+    pastYear: "#8B5CF6",
+    success: "#10B981",
+    fail: "#EF4444"
+  },
+  {
+    id: "forest",
+    name: "Forest & Clay",
+    colors: ["#0F4C81", "#2D6A4F", "#D97706", "#DC2626", "#F59E0B", "#1A202C"],
+    sales: "#0F4C81",
+    target: "#D97706",
+    pastYear: "#F59E0B",
+    success: "#2D6A4F",
+    fail: "#DC2626"
+  }
+];
 
 export function Dashboard({ data, theme, toggleTheme, onBack, savedVersions, onLoadVersion, onDeleteVersion, onRenameVersion, onLogout, onInstall, initialFilters, userEmail }: DashboardProps) {
+  const [activePaletteIndex, setActivePaletteIndex] = useState(0);
+  const activePalette = PALETTES[activePaletteIndex];
+  const COLORS = activePalette.colors;
+
   const [isSlicerExpanded, setIsSlicerExpanded] = useState(false);
   const [showInsightsOverlay, setShowInsightsOverlay] = useState(false);
   const [aiInsights, setAiInsights] = useState("");
@@ -56,9 +91,34 @@ export function Dashboard({ data, theme, toggleTheme, onBack, savedVersions, onL
     }
   }, [initialFilters]);
 
+  // Sanitize month names dynamically to 3-letter abbreviations
+  const sanitizedData = useMemo(() => {
+    const MONTH_MAP: { [key: string]: string } = {
+      january: "Jan", february: "Feb", march: "Mar", april: "Apr", may: "May", june: "Jun",
+      july: "Jul", august: "Aug", september: "Sep", october: "Oct", november: "Nov", december: "Dec",
+      jan: "Jan", feb: "Feb", mar: "Mar", apr: "Apr", jun: "Jun", jul: "Jul", aug: "Aug",
+      sep: "Sep", oct: "Oct", nov: "Nov", dec: "Dec"
+    };
+    return data.map(item => {
+      const rawMonth = String(item.Month || "").trim();
+      const cleanMonthLower = rawMonth.toLowerCase();
+      let monthAbbr = rawMonth;
+      for (const key of Object.keys(MONTH_MAP)) {
+        if (cleanMonthLower.startsWith(key)) {
+          monthAbbr = MONTH_MAP[key];
+          break;
+        }
+      }
+      return {
+        ...item,
+        Month: monthAbbr
+      };
+    });
+  }, [data]);
+
   // Filter Data
   const filteredData = useMemo(() => {
-    return data.filter(row => {
+    return sanitizedData.filter(row => {
       return (
         (filters.Region.length === 0 || filters.Region.includes(row.Region)) &&
         (filters["BU Line"].length === 0 || filters["BU Line"].includes(row["BU Line"])) &&
@@ -68,7 +128,7 @@ export function Dashboard({ data, theme, toggleTheme, onBack, savedVersions, onL
         (filters.Month.length === 0 || filters.Month.includes(row.Month))
       );
     });
-  }, [data, filters]);
+  }, [sanitizedData, filters]);
 
   // Aggregations
   const KPIs = useMemo(() => {
@@ -258,14 +318,14 @@ export function Dashboard({ data, theme, toggleTheme, onBack, savedVersions, onL
 
     return {
       chart0: topMonthlyPerf ? `${topMonthlyPerf.Month} achieved the highest target completion at ${(topMonthlyPerf.Sales/topMonthlyPerf.Target * 100).toFixed(1)}%.` : "Monitoring sales vs targets over time.",
-      chart1: topReg ? `${topReg.Region} leads regional sales with $${formatAbbreviatedValue(topReg.Sales)} (${(topReg.Sales/KPIs.totalSales * 100).toFixed(1)}% share).` : "Regional distribution of sales revenue.",
-      chart2: topBrand ? `${topBrand.Brand} is the leading brand, contributing $${formatAbbreviatedValue(topBrand.Sales)} to total revenue.` : "Performance of top-tier brands.",
+      chart1: topReg ? `${topReg.Region} leads regional sales with ${formatAbbreviatedValue(topReg.Sales)} (${(topReg.Sales/KPIs.totalSales * 100).toFixed(1)}% share).` : "Regional distribution of sales revenue.",
+      chart2: topBrand ? `${topBrand.Brand} is the leading brand, contributing ${formatAbbreviatedValue(topBrand.Sales)} to total revenue.` : "Performance of top-tier brands.",
       chart3: KPIs.growth >= 0 ? `Positive growth detected: Sales are up ${KPIs.growth.toFixed(1)}% compared to the same categories last year.` : `Action required: Sales have dipped ${Math.abs(KPIs.growth).toFixed(1)}% vs. the previous year in these categories.`,
       chart4: topBU ? `${topBU.name} is the primary Business Unit driver, currently making up the largest slice of the portfolio.` : "Composition of sales across Business Units.",
       chart5: salesByMonth.length > 1 ? `Sales trend is currently ${salesByMonth[salesByMonth.length-1].Sales > salesByMonth[0].Sales ? 'trending upward' : 'fluctuating'} across the observed period.` : "Monitoring sales momentum.",
       chart6: topTA ? `${topTA.TherapyArea} represents the most successful therapy area in terms of raw sales value.` : "Comparison of revenue by therapeutic focus.",
-      chart7: topAssignee ? `${topAssignee.Assignee} is the top performer, delivering $${formatAbbreviatedValue(topAssignee.Sales)} against their individual target.` : "Sales contributions by key account assignees.",
-      chart8: bestGap?.Gap > 0 ? `${bestGap.Region} is over-performing by $${formatAbbreviatedValue(bestGap.Gap)}, while ${worstGap?.Region} shows the largest shortfall.` : "Regional variance analysis against commercial targets.",
+      chart7: topAssignee ? `${topAssignee.Assignee} is the top performer, delivering ${formatAbbreviatedValue(topAssignee.Sales)} against their individual target.` : "Sales contributions by key account assignees.",
+      chart8: bestGap?.Gap > 0 ? `${bestGap.Region} is over-performing by ${formatAbbreviatedValue(bestGap.Gap)}, while ${worstGap?.Region} shows the largest shortfall.` : "Regional variance analysis against commercial targets.",
       chart9: topAchBU ? `${topAchBU.BU} reflects peak efficiency with ${topAchBU.Achievement.toFixed(1)}% target achievement.` : "Benchmarking BU efficiency.",
       chart10: findTop(salesByCategory, "name", "value") ? `${findTop(salesByCategory, "name", "value").name} is the currently dominant sales category.` : "Product category breakdown.",
       chart11: topAchTA ? `${topAchTA.name} is exceeding target expectations with an achievement of ${topAchTA.Achievement.toFixed(1)}%.` : "Identifying therapy areas with high target completion."
@@ -301,13 +361,12 @@ export function Dashboard({ data, theme, toggleTheme, onBack, savedVersions, onL
         return (
           <ResponsiveContainer width="100%" height={height} debounce={debounce}>
             <ComposedChart data={salesByMonth}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="currentColor" opacity={0.1} />
               <XAxis dataKey="Month" stroke="currentColor" opacity={0.5} fontSize={12} tickLine={false} axisLine={false} />
-              <YAxis stroke="currentColor" opacity={0.5} fontSize={12} tickLine={false} axisLine={false} tickFormatter={(v)=> `$${formatAbbreviatedValue(v)}`} />
-              <RechartsTooltip cursor={{ fill: 'transparent' }} formatter={(value: number) => [`$${formatAbbreviatedValue(value)}`, '']} contentStyle={{ backgroundColor: 'var(--tw-prose-bg)', borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
+              <YAxis stroke="currentColor" opacity={0.5} fontSize={12} tickLine={false} axisLine={false} tickFormatter={(v)=> `${formatAbbreviatedValue(v)}`} />
+              <RechartsTooltip cursor={{ fill: 'transparent' }} formatter={(value: number) => [`${formatAbbreviatedValue(value)}`, '']} contentStyle={{ backgroundColor: 'var(--tw-prose-bg)', borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
               <Legend iconType="circle" wrapperStyle={{ fontSize: '12px', opacity: 0.8 }} />
-              <Bar dataKey="Sales" fill="#2563eb" radius={[4, 4, 0, 0]} maxBarSize={40} />
-              <Line type="monotone" dataKey="Target" stroke="#f59e0b" strokeWidth={3} dot={{ r: 4 }} />
+              <Bar dataKey="Sales" fill={activePalette.sales} radius={[4, 4, 0, 0]} maxBarSize={40} />
+              <Line type="monotone" dataKey="Target" stroke={activePalette.target} strokeWidth={3} dot={{ r: 4 }} />
             </ComposedChart>
           </ResponsiveContainer>
         );
@@ -315,12 +374,12 @@ export function Dashboard({ data, theme, toggleTheme, onBack, savedVersions, onL
         return (
           <ResponsiveContainer width="100%" height={height} debounce={debounce}>
             <PieChart>
-              <Pie data={salesByRegion} dataKey="Sales" nameKey="Region" cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={2}>
+              <Pie data={salesByRegion} dataKey="Sales" nameKey="Region" cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={5} stroke="transparent" strokeWidth={4}>
                 {salesByRegion.map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                 ))}
               </Pie>
-              <RechartsTooltip formatter={(value: number) => [`$${formatAbbreviatedValue(value)}`, 'Sales']} contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
+              <RechartsTooltip formatter={(value: number) => [`${formatAbbreviatedValue(value)}`, 'Sales']} contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
               <Legend iconType="circle" wrapperStyle={{ fontSize: '12px' }} />
             </PieChart>
           </ResponsiveContainer>
@@ -329,11 +388,10 @@ export function Dashboard({ data, theme, toggleTheme, onBack, savedVersions, onL
         return (
           <ResponsiveContainer width="100%" height={height} debounce={debounce}>
             <BarChart data={topBrands} layout="vertical" margin={{ left: 20 }}>
-              <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="currentColor" opacity={0.1} />
-              <XAxis type="number" stroke="currentColor" opacity={0.5} fontSize={12} tickLine={false} axisLine={false} tickFormatter={(v)=> `$${formatAbbreviatedValue(v)}`} />
+              <XAxis type="number" stroke="currentColor" opacity={0.5} fontSize={12} tickLine={false} axisLine={false} tickFormatter={(v)=> `${formatAbbreviatedValue(v)}`} />
               <YAxis type="category" dataKey="Brand" stroke="currentColor" opacity={0.5} fontSize={12} tickLine={false} axisLine={false} />
-              <RechartsTooltip cursor={{ fill: 'transparent' }} formatter={(value: number) => [`$${formatAbbreviatedValue(value)}`, 'Sales']} contentStyle={{ borderRadius: '8px', border: 'none' }} />
-              <Bar dataKey="Sales" fill="#10b981" radius={[0, 4, 4, 0]} maxBarSize={30} />
+              <RechartsTooltip cursor={{ fill: 'transparent' }} formatter={(value: number) => [`${formatAbbreviatedValue(value)}`, 'Sales']} contentStyle={{ borderRadius: '8px', border: 'none' }} />
+              <Bar dataKey="Sales" fill={activePalette.sales} radius={[0, 4, 4, 0]} maxBarSize={30} />
             </BarChart>
           </ResponsiveContainer>
         );
@@ -341,13 +399,12 @@ export function Dashboard({ data, theme, toggleTheme, onBack, savedVersions, onL
         return (
           <ResponsiveContainer width="100%" height={height} debounce={debounce}>
             <BarChart data={salesVsPastYear}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="currentColor" opacity={0.1} />
               <XAxis dataKey="Category" stroke="currentColor" opacity={0.5} fontSize={12} tickLine={false} axisLine={false} />
-              <YAxis stroke="currentColor" opacity={0.5} fontSize={12} tickLine={false} axisLine={false} tickFormatter={(v)=> `$${formatAbbreviatedValue(v)}`} />
-              <RechartsTooltip cursor={{ fill: 'transparent' }} formatter={(value: number) => [`$${formatAbbreviatedValue(value)}`, '']} contentStyle={{ borderRadius: '8px', border: 'none' }} />
+              <YAxis stroke="currentColor" opacity={0.5} fontSize={12} tickLine={false} axisLine={false} tickFormatter={(v)=> `${formatAbbreviatedValue(v)}`} />
+              <RechartsTooltip cursor={{ fill: 'transparent' }} formatter={(value: number) => [`${formatAbbreviatedValue(value)}`, '']} contentStyle={{ borderRadius: '8px', border: 'none' }} />
               <Legend iconType="circle" wrapperStyle={{ fontSize: '12px' }} />
-              <Bar dataKey="Sales" fill="#8b5cf6" radius={[4, 4, 0, 0]} maxBarSize={30} />
-              <Bar dataKey="PastYear" fill="#cbd5e1" radius={[4, 4, 0, 0]} maxBarSize={30} />
+              <Bar dataKey="Sales" fill={activePalette.sales} radius={[4, 4, 0, 0]} maxBarSize={30} />
+              <Bar dataKey="PastYear" fill={activePalette.pastYear} radius={[4, 4, 0, 0]} maxBarSize={30} />
             </BarChart>
           </ResponsiveContainer>
         );
@@ -355,12 +412,12 @@ export function Dashboard({ data, theme, toggleTheme, onBack, savedVersions, onL
         return (
           <ResponsiveContainer width="100%" height={height} debounce={debounce}>
             <PieChart>
-              <Pie data={salesByBU} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={90}>
+              <Pie data={salesByBU} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={90} paddingAngle={5} stroke="transparent" strokeWidth={4}>
                 {salesByBU.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[(index + 1) % COLORS.length]} />
                 ))}
               </Pie>
-              <RechartsTooltip formatter={(value: number) => [`$${formatAbbreviatedValue(value)}`, 'Sales']} contentStyle={{ borderRadius: '8px', border: 'none' }} />
+              <RechartsTooltip formatter={(value: number) => [`${formatAbbreviatedValue(value)}`, 'Sales']} contentStyle={{ borderRadius: '8px', border: 'none' }} />
               <Legend iconType="circle" wrapperStyle={{ fontSize: '12px' }} />
             </PieChart>
           </ResponsiveContainer>
@@ -369,12 +426,11 @@ export function Dashboard({ data, theme, toggleTheme, onBack, savedVersions, onL
         return (
           <ResponsiveContainer width="100%" height={height} debounce={debounce}>
             <ComposedChart data={salesByMonth}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="currentColor" opacity={0.1} />
               <XAxis dataKey="Month" stroke="currentColor" opacity={0.5} fontSize={12} tickLine={false} axisLine={false} />
-              <YAxis stroke="currentColor" opacity={0.5} fontSize={12} tickLine={false} axisLine={false} tickFormatter={(v)=> `$${formatAbbreviatedValue(v)}`} />
-              <RechartsTooltip formatter={(value: number, name: string) => [`$${formatAbbreviatedValue(value)}`, name === 'PastYear' ? 'Past Year' : 'Sales']} contentStyle={{ borderRadius: '8px', border: 'none' }} />
-              <Area type="monotone" dataKey="Sales" fill="#2563eb" fillOpacity={0.1} stroke="#2563eb" strokeWidth={3} name="Sales" dot={{ r: 4 }} activeDot={{ r: 6 }} />
-              <Line type="monotone" dataKey="PastYear" stroke="#9ca3af" strokeWidth={2} strokeDasharray="5 5" name="Past Year" dot={false} />
+              <YAxis stroke="currentColor" opacity={0.5} fontSize={12} tickLine={false} axisLine={false} tickFormatter={(v)=> `${formatAbbreviatedValue(v)}`} />
+              <RechartsTooltip formatter={(value: number, name: string) => [`${formatAbbreviatedValue(value)}`, name === 'PastYear' ? 'Past Year' : 'Sales']} contentStyle={{ borderRadius: '8px', border: 'none' }} />
+              <Area type="monotone" dataKey="Sales" fill={activePalette.sales} fillOpacity={0.1} stroke={activePalette.sales} strokeWidth={3} name="Sales" dot={{ r: 4 }} activeDot={{ r: 6 }} />
+              <Line type="monotone" dataKey="PastYear" stroke={activePalette.pastYear} strokeWidth={2} strokeDasharray="5 5" name="Past Year" dot={false} />
               <Legend wrapperStyle={{ fontSize: '12px' }} />
             </ComposedChart>
           </ResponsiveContainer>
@@ -383,11 +439,10 @@ export function Dashboard({ data, theme, toggleTheme, onBack, savedVersions, onL
         return (
           <ResponsiveContainer width="100%" height={height} debounce={debounce}>
             <BarChart data={salesByTherapyArea} layout="vertical" margin={{ left: 20 }}>
-              <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="currentColor" opacity={0.1} />
-              <XAxis type="number" stroke="currentColor" opacity={0.5} fontSize={12} tickLine={false} axisLine={false} tickFormatter={(v)=> `$${formatAbbreviatedValue(v)}`} />
+              <XAxis type="number" stroke="currentColor" opacity={0.5} fontSize={12} tickLine={false} axisLine={false} tickFormatter={(v)=> `${formatAbbreviatedValue(v)}`} />
               <YAxis type="category" dataKey="TherapyArea" stroke="currentColor" opacity={0.5} fontSize={12} tickLine={false} axisLine={false} />
-              <RechartsTooltip cursor={{ fill: 'transparent' }} formatter={(value: number) => [`$${formatAbbreviatedValue(value)}`, 'Sales']} contentStyle={{ borderRadius: '8px', border: 'none' }} />
-              <Bar dataKey="Sales" fill="#f43f5e" radius={[0, 4, 4, 0]} maxBarSize={30} />
+              <RechartsTooltip cursor={{ fill: 'transparent' }} formatter={(value: number) => [`${formatAbbreviatedValue(value)}`, 'Sales']} contentStyle={{ borderRadius: '8px', border: 'none' }} />
+              <Bar dataKey="Sales" fill={activePalette.sales} radius={[0, 4, 4, 0]} maxBarSize={30} />
             </BarChart>
           </ResponsiveContainer>
         );
@@ -395,13 +450,12 @@ export function Dashboard({ data, theme, toggleTheme, onBack, savedVersions, onL
         return (
           <ResponsiveContainer width="100%" height={height} debounce={debounce}>
             <BarChart data={salesByAssignee}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="currentColor" opacity={0.1} />
               <XAxis dataKey="Assignee" stroke="currentColor" opacity={0.5} fontSize={12} tickLine={false} axisLine={false} />
-              <YAxis stroke="currentColor" opacity={0.5} fontSize={12} tickLine={false} axisLine={false} tickFormatter={(v)=> `$${formatAbbreviatedValue(v)}`} />
-              <RechartsTooltip cursor={{ fill: 'transparent' }} formatter={(value: number) => [`$${formatAbbreviatedValue(value)}`, '']} contentStyle={{ borderRadius: '8px', border: 'none' }} />
+              <YAxis stroke="currentColor" opacity={0.5} fontSize={12} tickLine={false} axisLine={false} tickFormatter={(v)=> `${formatAbbreviatedValue(v)}`} />
+              <RechartsTooltip cursor={{ fill: 'transparent' }} formatter={(value: number) => [`${formatAbbreviatedValue(value)}`, '']} contentStyle={{ borderRadius: '8px', border: 'none' }} />
               <Legend iconType="circle" wrapperStyle={{ fontSize: '12px' }} verticalAlign="top" />
-              <Bar dataKey="Sales" fill="#14b8a6" radius={[4, 4, 0, 0]} maxBarSize={20} />
-              <Bar dataKey="Target" fill="#e2e8f0" radius={[4, 4, 0, 0]} maxBarSize={20} />
+              <Bar dataKey="Sales" fill={activePalette.sales} radius={[4, 4, 0, 0]} maxBarSize={20} />
+              <Bar dataKey="Target" fill={activePalette.target} radius={[4, 4, 0, 0]} maxBarSize={20} />
             </BarChart>
           </ResponsiveContainer>
         );
@@ -409,13 +463,12 @@ export function Dashboard({ data, theme, toggleTheme, onBack, savedVersions, onL
         return (
           <ResponsiveContainer width="100%" height={height} debounce={debounce}>
             <BarChart data={gapByRegion}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="currentColor" opacity={0.1} />
               <XAxis dataKey="Region" stroke="currentColor" opacity={0.5} fontSize={12} tickLine={false} axisLine={false} />
-              <YAxis stroke="currentColor" opacity={0.5} fontSize={12} tickLine={false} axisLine={false} tickFormatter={(v)=> `$${formatAbbreviatedValue(v)}`} />
-              <RechartsTooltip cursor={{ fill: 'transparent' }} formatter={(value: number) => [`$${formatAbbreviatedValue(value)}`, 'Gap']} contentStyle={{ borderRadius: '8px', border: 'none' }} />
+              <YAxis stroke="currentColor" opacity={0.5} fontSize={12} tickLine={false} axisLine={false} tickFormatter={(v)=> `${formatAbbreviatedValue(v)}`} />
+              <RechartsTooltip cursor={{ fill: 'transparent' }} formatter={(value: number) => [`${formatAbbreviatedValue(value)}`, 'Gap']} contentStyle={{ borderRadius: '8px', border: 'none' }} />
               <Bar dataKey="Gap" maxBarSize={40}>
                 {gapByRegion.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.Gap >= 0 ? '#10b981' : '#ef4444'} radius={[4, 4, 0, 0]} />
+                  <Cell key={`cell-${index}`} fill={entry.Gap >= 0 ? activePalette.success : activePalette.fail} radius={[4, 4, 0, 0]} />
                 ))}
               </Bar>
             </BarChart>
@@ -425,13 +478,12 @@ export function Dashboard({ data, theme, toggleTheme, onBack, savedVersions, onL
         return (
           <ResponsiveContainer width="100%" height={height} debounce={debounce}>
             <BarChart data={achievementByBu} layout="vertical" margin={{ left: 20 }}>
-              <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="currentColor" opacity={0.1} />
               <XAxis type="number" stroke="currentColor" opacity={0.5} fontSize={12} tickLine={false} axisLine={false} tickFormatter={(v)=> `${v.toFixed(0)}%`} />
               <YAxis type="category" dataKey="BU" stroke="currentColor" opacity={0.5} fontSize={12} tickLine={false} axisLine={false} />
               <RechartsTooltip cursor={{ fill: 'transparent' }} formatter={(value: number) => [`${value.toFixed(1)}%`, 'Achievement']} contentStyle={{ borderRadius: '8px', border: 'none' }} />
               <Bar dataKey="Achievement" maxBarSize={30}>
                 {achievementByBu.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.Achievement >= 100 ? '#10b981' : '#f59e0b'} radius={[0, 4, 4, 0]} />
+                  <Cell key={`cell-${index}`} fill={entry.Achievement >= 100 ? activePalette.success : activePalette.target} radius={[0, 4, 4, 0]} />
                 ))}
               </Bar>
             </BarChart>
@@ -441,12 +493,12 @@ export function Dashboard({ data, theme, toggleTheme, onBack, savedVersions, onL
         return (
           <ResponsiveContainer width="100%" height={height} debounce={debounce}>
             <PieChart>
-              <Pie data={salesByCategory} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={5}>
+              <Pie data={salesByCategory} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={5} stroke="transparent" strokeWidth={4}>
                 {salesByCategory.map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                 ))}
               </Pie>
-              <RechartsTooltip formatter={(value: number) => [`$${formatAbbreviatedValue(value)}`, 'Sales']} contentStyle={{ borderRadius: '8px', border: 'none' }} />
+              <RechartsTooltip formatter={(value: number) => [`${formatAbbreviatedValue(value)}`, 'Sales']} contentStyle={{ borderRadius: '8px', border: 'none' }} />
               <Legend iconType="circle" wrapperStyle={{ fontSize: '10px' }} layout="horizontal" verticalAlign="bottom" align="center" />
             </PieChart>
           </ResponsiveContainer>
@@ -455,13 +507,12 @@ export function Dashboard({ data, theme, toggleTheme, onBack, savedVersions, onL
         return (
           <ResponsiveContainer width="100%" height={height} debounce={debounce}>
             <BarChart data={achievementByTherapyArea} layout="vertical" margin={{ left: 20 }}>
-              <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="currentColor" opacity={0.1} />
               <XAxis type="number" stroke="currentColor" opacity={0.5} fontSize={12} tickLine={false} axisLine={false} tickFormatter={(v)=> `${v.toFixed(0)}%`} />
               <YAxis type="category" dataKey="name" stroke="currentColor" opacity={0.5} fontSize={12} tickLine={false} axisLine={false} />
               <RechartsTooltip cursor={{ fill: 'transparent' }} formatter={(value: number) => [`${value.toFixed(1)}%`, 'Achievement']} contentStyle={{ borderRadius: '8px', border: 'none' }} />
               <Bar dataKey="Achievement" maxBarSize={30}>
                 {achievementByTherapyArea.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.Achievement >= 100 ? '#10b981' : '#f59e0b'} radius={[0, 4, 4, 0]} />
+                  <Cell key={`cell-${index}`} fill={entry.Achievement >= 100 ? activePalette.success : activePalette.target} radius={[0, 4, 4, 0]} />
                 ))}
               </Bar>
             </BarChart>
@@ -506,19 +557,25 @@ export function Dashboard({ data, theme, toggleTheme, onBack, savedVersions, onL
   const renderCustomChart = () => {
     const height = 350;
     const { type, yAxes } = customConfig;
-    const colors = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444"];
+    const colors = activePalette.colors;
+    
+    const getCustomColor = (key: string, idx: number) => {
+      if (key === "Sales Value" || key === "Sales") return activePalette.sales;
+      if (key === "Target Value" || key === "Target") return activePalette.target;
+      if (key === "Past Year Value" || key === "PastYear") return activePalette.pastYear;
+      return colors[idx % colors.length];
+    };
     
     switch (type) {
       case "bar":
         return (
           <ResponsiveContainer width="100%" height={height}>
             <BarChart data={customChartData}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="currentColor" opacity={0.1} />
               <XAxis dataKey="name" stroke="currentColor" opacity={0.5} fontSize={12} tickLine={false} axisLine={false} />
-              <YAxis stroke="currentColor" opacity={0.5} fontSize={12} tickLine={false} axisLine={false} tickFormatter={(v)=> `$${formatAbbreviatedValue(v)}`} />
-              <RechartsTooltip cursor={{ fill: 'transparent' }} formatter={(value: number, name: string) => [`$${formatAbbreviatedValue(value)}`, name]} contentStyle={{ borderRadius: '8px', border: 'none' }} />
+              <YAxis stroke="currentColor" opacity={0.5} fontSize={12} tickLine={false} axisLine={false} tickFormatter={(v)=> `${formatAbbreviatedValue(v)}`} />
+              <RechartsTooltip cursor={{ fill: 'transparent' }} formatter={(value: number, name: string) => [`${formatAbbreviatedValue(value)}`, name]} contentStyle={{ borderRadius: '8px', border: 'none' }} />
               {yAxes.map((y, i) => (
-                <Bar key={y} dataKey={y} fill={colors[i % colors.length]} radius={[4, 4, 0, 0]} maxBarSize={50} />
+                <Bar key={y} dataKey={y} fill={getCustomColor(y, i)} radius={[4, 4, 0, 0]} maxBarSize={50} />
               ))}
               {yAxes.length > 1 && <Legend wrapperStyle={{ fontSize: '12px' }} />}
             </BarChart>
@@ -528,12 +585,11 @@ export function Dashboard({ data, theme, toggleTheme, onBack, savedVersions, onL
          return (
           <ResponsiveContainer width="100%" height={height}>
             <ComposedChart data={customChartData}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="currentColor" opacity={0.1} />
               <XAxis dataKey="name" stroke="currentColor" opacity={0.5} fontSize={12} tickLine={false} axisLine={false} />
-              <YAxis stroke="currentColor" opacity={0.5} fontSize={12} tickLine={false} axisLine={false} tickFormatter={(v)=> `$${formatAbbreviatedValue(v)}`} />
-              <RechartsTooltip formatter={(value: number, name: string) => [`$${formatAbbreviatedValue(value)}`, name]} contentStyle={{ borderRadius: '8px', border: 'none' }} />
+              <YAxis stroke="currentColor" opacity={0.5} fontSize={12} tickLine={false} axisLine={false} tickFormatter={(v)=> `${formatAbbreviatedValue(v)}`} />
+              <RechartsTooltip formatter={(value: number, name: string) => [`${formatAbbreviatedValue(value)}`, name]} contentStyle={{ borderRadius: '8px', border: 'none' }} />
               {yAxes.map((y, i) => (
-                <Area key={y} type="monotone" dataKey={y} fill={colors[i % colors.length]} fillOpacity={0.1} stroke={colors[i % colors.length]} strokeWidth={3} />
+                <Area key={y} type="monotone" dataKey={y} fill={getCustomColor(y, i)} fillOpacity={0.1} stroke={getCustomColor(y, i)} strokeWidth={3} />
               ))}
               {yAxes.length > 1 && <Legend wrapperStyle={{ fontSize: '12px' }} />}
             </ComposedChart>
@@ -543,12 +599,11 @@ export function Dashboard({ data, theme, toggleTheme, onBack, savedVersions, onL
         return (
           <ResponsiveContainer width="100%" height={height}>
             <LineChart data={customChartData}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="currentColor" opacity={0.1} />
               <XAxis dataKey="name" stroke="currentColor" opacity={0.5} fontSize={12} tickLine={false} axisLine={false} />
-              <YAxis stroke="currentColor" opacity={0.5} fontSize={12} tickLine={false} axisLine={false} tickFormatter={(v)=> `$${formatAbbreviatedValue(v)}`} />
-              <RechartsTooltip formatter={(value: number, name: string) => [`$${formatAbbreviatedValue(value)}`, name]} contentStyle={{ borderRadius: '8px', border: 'none' }} />
+              <YAxis stroke="currentColor" opacity={0.5} fontSize={12} tickLine={false} axisLine={false} tickFormatter={(v)=> `${formatAbbreviatedValue(v)}`} />
+              <RechartsTooltip formatter={(value: number, name: string) => [`${formatAbbreviatedValue(value)}`, name]} contentStyle={{ borderRadius: '8px', border: 'none' }} />
               {yAxes.map((y, i) => (
-                <Line key={y} type="monotone" dataKey={y} stroke={colors[i % colors.length]} strokeWidth={3} dot={{ r: 4 }} />
+                <Line key={y} type="monotone" dataKey={y} stroke={getCustomColor(y, i)} strokeWidth={3} dot={{ r: 4 }} />
               ))}
               {yAxes.length > 1 && <Legend wrapperStyle={{ fontSize: '12px' }} />}
             </LineChart>
@@ -559,12 +614,12 @@ export function Dashboard({ data, theme, toggleTheme, onBack, savedVersions, onL
         return (
           <ResponsiveContainer width="100%" height={height}>
             <PieChart>
-              <Pie data={customChartData} dataKey={pieY} nameKey="name" cx="50%" cy="50%" outerRadius={120}>
+              <Pie data={customChartData} dataKey={pieY} nameKey="name" cx="50%" cy="50%" outerRadius={120} paddingAngle={5} stroke="transparent" strokeWidth={4}>
                 {customChartData.map((_, index) => (
                   <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                 ))}
               </Pie>
-              <RechartsTooltip formatter={(value: number) => [`$${formatAbbreviatedValue(value)}`, pieY]} contentStyle={{ borderRadius: '8px', border: 'none' }} />
+              <RechartsTooltip formatter={(value: number) => [`${formatAbbreviatedValue(value)}`, pieY]} contentStyle={{ borderRadius: '8px', border: 'none' }} />
               <Legend iconType="circle" wrapperStyle={{ fontSize: '12px' }} />
             </PieChart>
           </ResponsiveContainer>
@@ -593,14 +648,39 @@ export function Dashboard({ data, theme, toggleTheme, onBack, savedVersions, onL
             <ArrowLeft size={20} />
           </button>
           <div className="flex items-center gap-2">
-            <div className="p-1.5 bg-blue-600 rounded-lg text-white">
-              <BarChart3 size={20} />
-            </div>
+            <img src="/logo_icon.png" alt="Logo" className="w-auto h-8 object-contain" />
             <h1 className="text-xl font-bold tracking-tight text-blue-600 dark:text-blue-400 hidden sm:block">BI Sales Dashboard</h1>
           </div>
         </div>
         
         <div className="flex items-center gap-4">
+          {/* Color Palette Presets Selector */}
+          <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-900/50 p-1 rounded-lg border border-gray-200 dark:border-gray-700/50">
+            <div className="p-1 text-gray-400 dark:text-gray-500" title="Select Dashboard Color Theme">
+              <PaletteIcon size={15} />
+            </div>
+            {PALETTES.map((pal, idx) => (
+              <button
+                key={pal.id}
+                type="button"
+                onClick={() => setActivePaletteIndex(idx)}
+                className={`flex items-center p-1.5 rounded-md select-none transition-all ${
+                  activePaletteIndex === idx
+                    ? "bg-white dark:bg-gray-800 shadow-sm ring-1 ring-black/5"
+                    : "hover:bg-white/50 dark:hover:bg-gray-800/50"
+                }`}
+                title={`${pal.name} Theme`}
+              >
+                {/* 3 color preview dots */}
+                <span className="flex items-center gap-0.5 shrink-0">
+                  <span className="w-2.5 h-2.5 rounded-full ring-1 ring-black/5" style={{ backgroundColor: pal.sales }} title={`${pal.name} - Sales: ${pal.sales}`} />
+                  <span className="w-2.5 h-2.5 rounded-full ring-1 ring-black/5" style={{ backgroundColor: pal.target }} title={`${pal.name} - Target: ${pal.target}`} />
+                  <span className="w-2.5 h-2.5 rounded-full ring-1 ring-black/5" style={{ backgroundColor: pal.pastYear }} title={`${pal.name} - Past Year: ${pal.pastYear}`} />
+                </span>
+              </button>
+            ))}
+          </div>
+
           <button type="button" onClick={generateFullPageInsights} className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-purple-600 bg-purple-50 dark:bg-purple-900/20 dark:text-purple-400 rounded-lg hover:bg-purple-100 dark:hover:bg-purple-900/40 transition-colors">
             <BrainCircuit size={16} />
             AI Insights
@@ -648,7 +728,7 @@ export function Dashboard({ data, theme, toggleTheme, onBack, savedVersions, onL
       <div className="flex-1 flex overflow-hidden">
         {/* Left Slicer Pane */}
         <SlicerPane 
-          data={data}
+          data={sanitizedData}
           filters={filters}
           setFilters={setFilters}
           isExpanded={isSlicerExpanded}
@@ -664,9 +744,9 @@ export function Dashboard({ data, theme, toggleTheme, onBack, savedVersions, onL
             
             {/* KPIs */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <KpiCard title="Total Sales" value={`$${formatAbbreviatedValue(KPIs.totalSales)}`} subtitle="Actual sales value" icon={<DollarSign className="w-7 h-7" />} />
+              <KpiCard title="Total Sales" value={`${formatAbbreviatedValue(KPIs.totalSales)}`} subtitle="Actual sales value" icon={<DollarSign className="w-7 h-7" />} />
               <KpiCard title="Achievement %" value={`${KPIs.achievement.toFixed(1)}%`} subtitle="vs Target" trend={KPIs.achievement >= 100 ? 'up' : 'down'} icon={<Target className="w-7 h-7" />} />
-              <KpiCard title="Gap to Target" value={`$${formatAbbreviatedValue(Math.abs(KPIs.gapToTarget))}`} subtitle={KPIs.gapToTarget >= 0 ? "Above Target" : "Below Target"} trend={KPIs.gapToTarget >= 0 ? 'up' : 'down'} icon={<Activity className="w-7 h-7" />} />
+              <KpiCard title="Gap to Target" value={`${formatAbbreviatedValue(Math.abs(KPIs.gapToTarget))}`} subtitle={KPIs.gapToTarget >= 0 ? "Above Target" : "Below Target"} trend={KPIs.gapToTarget >= 0 ? 'up' : 'down'} icon={<Activity className="w-7 h-7" />} />
               <KpiCard title="Growth %" value={`${KPIs.growth.toFixed(1)}%`} subtitle="vs Past Year" trend={KPIs.growth >= 0 ? 'up' : 'down'} icon={<TrendingUp className="w-7 h-7" />} />
             </div>
 
@@ -999,8 +1079,8 @@ export function Dashboard({ data, theme, toggleTheme, onBack, savedVersions, onL
                 </div>
               </div>
               <div className="px-8 py-4 bg-gray-50 dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800">
-                <p className="text-base text-blue-600 dark:text-blue-400 font-medium">
-                  💡 Analysis: {expandedChartData.insight}
+                <p className="text-base text-blue-600 dark:text-blue-400 font-medium leading-relaxed">
+                  {expandedChartData.insight}
                 </p>
               </div>
             </motion.div>
@@ -1040,9 +1120,16 @@ function KpiCard({ title, value, subtitle, trend, icon }: { title: string, value
 function ChartCard({ title, children, id, insight, onDownloadImg, onDownloadCsv, onExpand }: { title: string, children: React.ReactNode, id: string, insight: string, onDownloadImg?: () => void, onDownloadCsv?: () => void, onExpand?: () => void }) {
   return (
     <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col overflow-hidden group/card" id={id}>
-      <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-700/50 flex justify-between items-center bg-gray-50/50 dark:bg-gray-800/50">
-        <h3 className="font-bold text-gray-900 dark:text-gray-100 uppercase text-[10px] tracking-widest opacity-70">{title}</h3>
-        <div className="flex items-center gap-1">
+      <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-700/50 flex justify-between items-start bg-gray-50/50 dark:bg-gray-800/50 gap-4">
+        <div className="flex-1 min-w-0">
+          <h3 className="font-bold text-gray-900 dark:text-gray-100 uppercase text-[10px] tracking-widest opacity-70 mb-1">{title}</h3>
+          {insight && (
+            <p className="text-xs text-blue-800 dark:text-blue-300 font-normal normal-case leading-relaxed mt-0.5 break-words">
+              {insight}
+            </p>
+          )}
+        </div>
+        <div className="flex items-center gap-1 shrink-0">
           {onExpand && (
             <button type="button" onClick={onExpand} title="Expand View" className="p-1.5 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-md transition-all active:scale-95">
               <Expand size={14} />
@@ -1062,9 +1149,6 @@ function ChartCard({ title, children, id, insight, onDownloadImg, onDownloadCsv,
       </div>
       <div className="p-4 flex-1">
         {children}
-      </div>
-      <div className="px-5 py-3 bg-blue-50 dark:bg-blue-900/10 border-t border-blue-100 dark:border-blue-900/20">
-        <p className="text-xs text-blue-800 dark:text-blue-300 font-medium">💡 Insight: {insight}</p>
       </div>
     </div>
   );

@@ -1,0 +1,47 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // --- REUSABLE HELPER FUNCTIONS ---
+
+    // Checks if the request is authenticated
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Resolves if the requesting user is a platform Owner or Administrator
+    function isAdmin() {
+      return isSignedIn() && (
+        request.auth.token.email == 'michel.gamal.honor@gmail.com' ||
+        request.auth.token.email == 'admin@gmail.com' ||
+        request.auth.token.email == 'admin@mgnext.com'
+      );
+    }
+
+    // --- COLLECTION RULES ---
+
+    // 1. Users profiles collection
+    match /users/{userId} {
+      // Users can read/write their own profile; Administrators can access all
+      allow read, write: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+    }
+
+    // 2. Saved workbooks and file slice versions
+    match /versions/{versionId} {
+      // Users can get and list their own saved files; Administrators can access everything
+      allow get, list: if isSignedIn() && (resource.data.ownerUid == request.auth.uid || isAdmin());
+
+      // Creating a new saved BI workbook version
+      allow create: if isSignedIn() && 
+                    request.resource.data.ownerUid == request.auth.uid;
+
+      // Updating an existing BI workbook version (ownership cannot be altered)
+      allow update: if isSignedIn() && 
+                    (resource.data.ownerUid == request.auth.uid || isAdmin()) && 
+                    request.resource.data.ownerUid == resource.data.ownerUid;
+
+      // Deleting a BI workbook
+      allow delete: if isSignedIn() && (resource.data.ownerUid == request.auth.uid || isAdmin());
+    }
+  }
+}

@@ -1,0 +1,86 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "User account registration details and security access roles.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "The unique system-assigned Firebase Authentication UID."
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "The registered corporate email address of the user."
+        },
+        "name": {
+          "type": "string",
+          "description": "The user's formal full name."
+        },
+        "role": {
+          "type": "string",
+          "enum": ["Viewer", "Analyst", "Administrator"],
+          "description": "The systemic authorization role assigned to this user."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp indicating when the account profile was created."
+        }
+      },
+      "required": ["uid", "email", "name", "role", "createdAt"]
+    },
+    "Version": {
+      "title": "Dataset Version",
+      "description": "A saved workbook or report version uploaded and managed by a user.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The unique record identifier."
+        },
+        "name": {
+          "type": "string",
+          "description": "The user-assigned label or name of the dataset version."
+        },
+        "date": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO timestamp indicating when the version was saved."
+        },
+        "rows": {
+          "type": "number",
+          "description": "The count of rows stored in the dataset version."
+        },
+        "data": {
+          "type": "array",
+          "description": "Static table rows associated with this saved version."
+        },
+        "filters": {
+          "type": "object",
+          "description": "Active filter configurations applied when saving."
+        },
+        "ownerUid": {
+          "type": "string",
+          "description": "The owner UID who saved this dataset."
+        },
+        "ownerEmail": {
+          "type": "string",
+          "description": "The owner email who saved this dataset."
+        }
+      },
+      "required": ["id", "name", "date", "rows", "ownerUid", "ownerEmail"]
+    }
+  },
+  "firestore": {
+    "users/{userId}": {
+      "schema": "User",
+      "description": "The core repository of user access profiles."
+    },
+    "versions/{versionId}": {
+      "schema": "Version",
+      "description": "Collection of workbook and data slice versions."
+    }
+  }
+}

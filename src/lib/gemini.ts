@@ -22,7 +22,7 @@ export async function generateInsights(prompt: string): Promise<string> {
   try {
     const ai = getAiClient();
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-pro",
+      model: "gemini-3.5-flash",
       contents: prompt,
     });
     return response.text || "No insights generated.";
