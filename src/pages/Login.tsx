@@ -429,7 +429,7 @@ export function Login({ onLogin, theme, toggleTheme }: LoginProps) {
                 >
                   <h2 className="text-xl font-bold mb-5 flex items-center gap-2 text-gray-800 dark:text-white">
                     <ShieldCheck className="text-blue-600 dark:text-blue-400" size={22} />
-                    Account Authentication
+                    Login
                   </h2>
 
                   {error && (
@@ -520,7 +520,7 @@ export function Login({ onLogin, theme, toggleTheme }: LoginProps) {
                       type="submit"
                       className="w-full flex items-center justify-center gap-2 py-3.5 bg-slate-100 hover:bg-slate-200/80 text-slate-800 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-white text-sm font-bold rounded-xl border border-slate-200 dark:border-slate-600 shadow-sm active:scale-[0.99] transition-all cursor-pointer"
                     >
-                      Authenticate and Enter
+                      Login
                       <ArrowRight size={16} className="text-slate-600 dark:text-slate-300" />
                     </button>
                   </form>
