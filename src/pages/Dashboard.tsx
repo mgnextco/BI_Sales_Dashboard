@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import { 
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, 
-  Legend, ResponsiveContainer, PieChart, Pie, Cell, ComposedChart, Area
+  Legend, ResponsiveContainer, PieChart, Pie, Cell, ComposedChart, Area, LabelList
 } from "recharts";
 
 interface DashboardProps {
@@ -75,6 +75,13 @@ export function Dashboard({ data, theme, toggleTheme, onBack, savedVersions, onL
   const [isGenerating, setIsGenerating] = useState(false);
   
   const [expandedChartId, setExpandedChartId] = useState<string | null>(null);
+  const [customConfig, setCustomConfig] = useState({
+    type: 'bar' as 'bar' | 'line' | 'pie' | 'area',
+    xAxis: 'Region' as keyof DataRow,
+    yAxes: ['Sales Value'] as Array<keyof DataRow>,
+    showAchievement: false,
+    showGrowth: false
+  });
   const [filters, setFilters] = useState<FilterState>(initialFilters || {
     Region: [],
     "BU Line": [],
@@ -346,7 +353,20 @@ export function Dashboard({ data, theme, toggleTheme, onBack, savedVersions, onL
       { id: "chart-8", title: "Target Gap by Region", insight: dynamicInsights.chart8 },
       { id: "chart-9", title: "Achievement % by BU Line", insight: dynamicInsights.chart9 },
       { id: "chart-10", title: "Sales Distribution by Category", insight: dynamicInsights.chart10 },
-      { id: "chart-11", title: "Achievement % by Therapy Area", insight: dynamicInsights.chart11 }
+      { id: "chart-11", title: "Achievement % by Therapy Area", insight: dynamicInsights.chart11 },
+      { 
+        id: "custom-chart", 
+        title: `Custom Visual: ${customConfig.xAxis} vs ${[
+          ...customConfig.yAxes, 
+          ...(customConfig.showAchievement && customConfig.yAxes.includes("Sales Value") && customConfig.yAxes.includes("Target Value") ? ["Achievement %"] : []),
+          ...(customConfig.showGrowth && customConfig.yAxes.includes("Sales Value") && customConfig.yAxes.includes("Past Year Value") ? ["Growth %"] : [])
+        ].join(' & ')}`, 
+        insight: `This custom interactive visual is created by grouping ${customConfig.xAxis} dimensions with ${[
+          ...customConfig.yAxes,
+          ...(customConfig.showAchievement && customConfig.yAxes.includes("Sales Value") && customConfig.yAxes.includes("Target Value") ? ["Achievement %"] : []),
+          ...(customConfig.showGrowth && customConfig.yAxes.includes("Sales Value") && customConfig.yAxes.includes("Past Year Value") ? ["Growth %"] : [])
+        ].join(', ')} metrics in a ${customConfig.type} layout.` 
+      }
     ];
     return charts.find(c => c.id === expandedChartId) || null;
   };
@@ -357,6 +377,8 @@ export function Dashboard({ data, theme, toggleTheme, onBack, savedVersions, onL
     const debounce = isExpanded ? 50 : 0;
     
     switch (id) {
+      case "custom-chart":
+        return renderCustomChart(height);
       case "chart-0":
         return (
           <ResponsiveContainer width="100%" height={height} debounce={debounce}>
@@ -525,12 +547,6 @@ export function Dashboard({ data, theme, toggleTheme, onBack, savedVersions, onL
 
   const expandedChartData = getExpandedChartData();
 
-  const [customConfig, setCustomConfig] = useState({
-    type: 'bar' as 'bar' | 'line' | 'pie' | 'area',
-    xAxis: 'Region' as keyof DataRow,
-    yAxes: ['Sales Value'] as Array<keyof DataRow>
-  });
-
   const customChartData = useMemo(() => {
     const map = new Map();
     filteredData.forEach(d => {
@@ -545,6 +561,24 @@ export function Dashboard({ data, theme, toggleTheme, onBack, savedVersions, onL
       map.set(xVal, existing);
     });
     let result = Array.from(map.values());
+
+    const hasSales = customConfig.yAxes.includes('Sales Value');
+    const hasTarget = customConfig.yAxes.includes('Target Value');
+    const hasPastYear = customConfig.yAxes.includes('Past Year Value');
+
+    result.forEach(row => {
+      if (hasSales && hasTarget && customConfig.showAchievement) {
+        const sales = row['Sales Value'] || 0;
+        const target = row['Target Value'] || 0;
+        row['Achievement %'] = target > 0 ? (sales / target) * 100 : 0;
+      }
+      if (hasSales && hasPastYear && customConfig.showGrowth) {
+        const sales = row['Sales Value'] || 0;
+        const pastYear = row['Past Year Value'] || 0;
+        row['Growth %'] = pastYear > 0 ? ((sales - pastYear) / pastYear) * 100 : 0;
+      }
+    });
+
     if (customConfig.xAxis === 'Month') {
         result.sort((a,b) => getMonthIndex(a.name) - getMonthIndex(b.name));
     } else {
@@ -554,8 +588,8 @@ export function Dashboard({ data, theme, toggleTheme, onBack, savedVersions, onL
     return result.slice(0, 15); // limit to 15 for readability
   }, [filteredData, customConfig]);
 
-  const renderCustomChart = () => {
-    const height = 350;
+  const renderCustomChart = (overrideHeight?: number | string) => {
+    const height = overrideHeight || 350;
     const { type, yAxes } = customConfig;
     const colors = activePalette.colors;
     
@@ -565,31 +599,96 @@ export function Dashboard({ data, theme, toggleTheme, onBack, savedVersions, onL
       if (key === "Past Year Value" || key === "PastYear") return activePalette.pastYear;
       return colors[idx % colors.length];
     };
+
+    const hasAchievement = customConfig.showAchievement && yAxes.includes("Sales Value") && yAxes.includes("Target Value");
+    const hasGrowth = customConfig.showGrowth && yAxes.includes("Sales Value") && yAxes.includes("Past Year Value");
+
+    const customTooltipFormatter = (value: any, name: string) => {
+      if (name === "Achievement %" || name === "Growth %") {
+        return [`${Number(value).toFixed(1)}%`, name];
+      }
+      return [`${formatAbbreviatedValue(Number(value))}`, name];
+    };
+
+    const renderTopLabels = (props: any) => {
+      const { x, y, width = 0, index } = props;
+      const dataItem = customChartData[index];
+      if (!dataItem) return null;
+
+      const showAch = customConfig.showAchievement && dataItem['Achievement %'] !== undefined;
+      const showGro = customConfig.showGrowth && dataItem['Growth %'] !== undefined;
+
+      if (!showAch && !showGro) return null;
+
+      const labels: string[] = [];
+      if (showAch) {
+        labels.push(`${dataItem['Achievement %'].toFixed(0)}%`);
+      }
+      if (showGro) {
+        labels.push(`${dataItem['Growth %'] > 0 ? '+' : ''}${dataItem['Growth %'].toFixed(0)}% YoY`);
+      }
+
+      const labelText = labels.join(" | ");
+      const posX = width ? x + width / 2 : x;
+      const posY = y - 10;
+
+      return (
+        <g key={`custom-text-lbl-${index}`} className="pointer-events-none select-none">
+          {/* subtle neat capsule backdrop for maximum legibility */}
+          <rect 
+            x={posX - (20 * labels.length + 10)} 
+            y={posY - 12} 
+            width={40 * labels.length + 20} 
+            height={16} 
+            rx={4} 
+            fill="currentColor"
+            className="fill-white/95 dark:fill-slate-800/95 stroke-slate-200 dark:stroke-slate-700 shadow-sm"
+            strokeWidth={1}
+          />
+          <text
+            x={posX}
+            y={posY}
+            className="text-[9px] font-extrabold fill-slate-800 dark:fill-blue-100"
+            textAnchor="middle"
+          >
+            {labelText}
+          </text>
+        </g>
+      );
+    };
     
     switch (type) {
       case "bar":
         return (
           <ResponsiveContainer width="100%" height={height}>
-            <BarChart data={customChartData}>
+            <ComposedChart data={customChartData}>
               <XAxis dataKey="name" stroke="currentColor" opacity={0.5} fontSize={12} tickLine={false} axisLine={false} />
               <YAxis stroke="currentColor" opacity={0.5} fontSize={12} tickLine={false} axisLine={false} tickFormatter={(v)=> `${formatAbbreviatedValue(v)}`} />
-              <RechartsTooltip cursor={{ fill: 'transparent' }} formatter={(value: number, name: string) => [`${formatAbbreviatedValue(value)}`, name]} contentStyle={{ borderRadius: '8px', border: 'none' }} />
+              <RechartsTooltip cursor={{ fill: 'transparent' }} formatter={customTooltipFormatter} contentStyle={{ borderRadius: '8px', border: 'none' }} />
               {yAxes.map((y, i) => (
-                <Bar key={y} dataKey={y} fill={getCustomColor(y, i)} radius={[4, 4, 0, 0]} maxBarSize={50} />
+                <Bar key={y} dataKey={y} fill={getCustomColor(y, i)} radius={[4, 4, 0, 0]} maxBarSize={50}>
+                  {i === 0 && (hasAchievement || hasGrowth) && (
+                    <LabelList content={renderTopLabels} />
+                  )}
+                </Bar>
               ))}
               {yAxes.length > 1 && <Legend wrapperStyle={{ fontSize: '12px' }} />}
-            </BarChart>
+            </ComposedChart>
           </ResponsiveContainer>
         );
-      case "area": // Use for "Trend" if type is area or columns 
+      case "area": 
          return (
           <ResponsiveContainer width="100%" height={height}>
             <ComposedChart data={customChartData}>
               <XAxis dataKey="name" stroke="currentColor" opacity={0.5} fontSize={12} tickLine={false} axisLine={false} />
               <YAxis stroke="currentColor" opacity={0.5} fontSize={12} tickLine={false} axisLine={false} tickFormatter={(v)=> `${formatAbbreviatedValue(v)}`} />
-              <RechartsTooltip formatter={(value: number, name: string) => [`${formatAbbreviatedValue(value)}`, name]} contentStyle={{ borderRadius: '8px', border: 'none' }} />
+              <RechartsTooltip formatter={customTooltipFormatter} contentStyle={{ borderRadius: '8px', border: 'none' }} />
               {yAxes.map((y, i) => (
-                <Area key={y} type="monotone" dataKey={y} fill={getCustomColor(y, i)} fillOpacity={0.1} stroke={getCustomColor(y, i)} strokeWidth={3} />
+                <Area key={y} type="monotone" dataKey={y} fill={getCustomColor(y, i)} fillOpacity={0.1} stroke={getCustomColor(y, i)} strokeWidth={3}>
+                  {i === 0 && (hasAchievement || hasGrowth) && (
+                    <LabelList content={renderTopLabels} />
+                  )}
+                </Area>
               ))}
               {yAxes.length > 1 && <Legend wrapperStyle={{ fontSize: '12px' }} />}
             </ComposedChart>
@@ -598,15 +697,19 @@ export function Dashboard({ data, theme, toggleTheme, onBack, savedVersions, onL
       case "line":
         return (
           <ResponsiveContainer width="100%" height={height}>
-            <LineChart data={customChartData}>
+            <ComposedChart data={customChartData}>
               <XAxis dataKey="name" stroke="currentColor" opacity={0.5} fontSize={12} tickLine={false} axisLine={false} />
               <YAxis stroke="currentColor" opacity={0.5} fontSize={12} tickLine={false} axisLine={false} tickFormatter={(v)=> `${formatAbbreviatedValue(v)}`} />
-              <RechartsTooltip formatter={(value: number, name: string) => [`${formatAbbreviatedValue(value)}`, name]} contentStyle={{ borderRadius: '8px', border: 'none' }} />
+              <RechartsTooltip formatter={customTooltipFormatter} contentStyle={{ borderRadius: '8px', border: 'none' }} />
               {yAxes.map((y, i) => (
-                <Line key={y} type="monotone" dataKey={y} stroke={getCustomColor(y, i)} strokeWidth={3} dot={{ r: 4 }} />
+                <Line key={y} type="monotone" dataKey={y} stroke={getCustomColor(y, i)} strokeWidth={3} dot={{ r: 4 }}>
+                  {i === 0 && (hasAchievement || hasGrowth) && (
+                    <LabelList content={renderTopLabels} />
+                  )}
+                </Line>
               ))}
               {yAxes.length > 1 && <Legend wrapperStyle={{ fontSize: '12px' }} />}
-            </LineChart>
+            </ComposedChart>
           </ResponsiveContainer>
         );
       case "pie":
@@ -744,10 +847,10 @@ export function Dashboard({ data, theme, toggleTheme, onBack, savedVersions, onL
             
             {/* KPIs */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <KpiCard title="Total Sales" value={`${formatAbbreviatedValue(KPIs.totalSales)}`} subtitle="Actual sales value" icon={<DollarSign className="w-7 h-7" />} />
-              <KpiCard title="Achievement %" value={`${KPIs.achievement.toFixed(1)}%`} subtitle="vs Target" trend={KPIs.achievement >= 100 ? 'up' : 'down'} icon={<Target className="w-7 h-7" />} />
-              <KpiCard title="Gap to Target" value={`${formatAbbreviatedValue(Math.abs(KPIs.gapToTarget))}`} subtitle={KPIs.gapToTarget >= 0 ? "Above Target" : "Below Target"} trend={KPIs.gapToTarget >= 0 ? 'up' : 'down'} icon={<Activity className="w-7 h-7" />} />
-              <KpiCard title="Growth %" value={`${KPIs.growth.toFixed(1)}%`} subtitle="vs Past Year" trend={KPIs.growth >= 0 ? 'up' : 'down'} icon={<TrendingUp className="w-7 h-7" />} />
+              <KpiCard title="Total Sales" value={`${formatAbbreviatedValue(KPIs.totalSales)}`} subtitle="Actual sales value" variant="green" icon={<DollarSign className="w-5 h-5" />} />
+              <KpiCard title="Achievement %" value={`${KPIs.achievement.toFixed(1)}%`} subtitle="vs Target" trend={KPIs.achievement >= 100 ? 'up' : 'down'} variant="blue" icon={<Target className="w-5 h-5" />} />
+              <KpiCard title="Gap to Target" value={`${formatAbbreviatedValue(Math.abs(KPIs.gapToTarget))}`} subtitle={KPIs.gapToTarget >= 0 ? "Above Target" : "Below Target"} trend={KPIs.gapToTarget >= 0 ? 'up' : 'down'} variant="orange" icon={<Activity className="w-5 h-5" />} />
+              <KpiCard title="Growth %" value={`${KPIs.growth.toFixed(1)}%`} subtitle="vs Past Year" trend={KPIs.growth >= 0 ? 'up' : 'down'} variant="purple" icon={<TrendingUp className="w-5 h-5" />} />
             </div>
 
             {/* Charts Grid */}
@@ -890,13 +993,43 @@ export function Dashboard({ data, theme, toggleTheme, onBack, savedVersions, onL
             {/* Custom Chart Builder */}
             <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-xl overflow-hidden mt-8">
               <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-lg">
-                    <BrainCircuit size={20} />
+                <div className="flex items-center justify-between flex-1 md:flex-initial gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-lg">
+                      <BrainCircuit size={20} />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-bold text-gray-900 dark:text-white">Custom Visual Builder</h3>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Build your own insight by selecting axes and visuals</p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="text-lg font-bold text-gray-900 dark:text-white">Custom Visual Builder</h3>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">Build your own insight by selecting axes and visuals</p>
+                  
+                  {/* Expand, extract, save options */}
+                  <div className="flex items-center gap-1 shrink-0 bg-gray-100 dark:bg-gray-700/50 p-1 rounded-lg">
+                    <button 
+                      type="button" 
+                      onClick={() => setExpandedChartId("custom-chart")} 
+                      title="Expand View" 
+                      className="p-1.5 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-white dark:hover:bg-gray-700 rounded-md transition-all active:scale-95"
+                    >
+                      <Expand size={14} />
+                    </button>
+                    <button 
+                      type="button" 
+                      onClick={() => handleChartCSV(customChartData, `Custom_Chart_${customConfig.xAxis}`)} 
+                      title="Export CSV" 
+                      className="p-1.5 text-gray-400 hover:text-green-600 dark:hover:text-green-400 hover:bg-white dark:hover:bg-gray-700 rounded-md transition-all active:scale-95"
+                    >
+                      <FileSpreadsheet size={14} />
+                    </button>
+                    <button 
+                      type="button" 
+                      onClick={() => handleChartImg("custom-chart", `Custom_Chart_${customConfig.xAxis}`)} 
+                      title="Export PNG" 
+                      className="p-1.5 text-gray-400 hover:text-purple-600 dark:hover:text-purple-400 hover:bg-white dark:hover:bg-gray-700 rounded-md transition-all active:scale-95"
+                    >
+                      <ImageIcon size={14} />
+                    </button>
                   </div>
                 </div>
                 
@@ -939,6 +1072,7 @@ export function Dashboard({ data, theme, toggleTheme, onBack, savedVersions, onL
                         const isSelected = customConfig.yAxes.includes(measure as any);
                         return (
                           <button
+                            type="button"
                             key={measure}
                             onClick={() => {
                               let newAxes = [...customConfig.yAxes];
@@ -961,16 +1095,114 @@ export function Dashboard({ data, theme, toggleTheme, onBack, savedVersions, onL
                             }`}>
                                {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
                             </div>
-                            {measure}
+                            {measure === "Sales Value" ? "Sales (Y1)" : measure === "Target Value" ? "Target" : "Past Year (Y0)"}
                           </button>
                         );
                       })}
                     </div>
                   </div>
+
+                  {/* Computed Percentage Overlays */}
+                  {customConfig.type !== "pie" && (
+                    <div className="flex flex-col gap-1">
+                      <label className="text-[10px] uppercase tracking-wider font-bold text-gray-400">Overlays & Ratios (Secondary Axis)</label>
+                      <div className="flex flex-wrap gap-2 mt-0.5">
+                        {/* Achievement % Toggle */}
+                        {(() => {
+                          const meetsReq = customConfig.yAxes.includes("Sales Value") && customConfig.yAxes.includes("Target Value");
+                          const isToggled = customConfig.showAchievement;
+                          return (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (!meetsReq) {
+                                  // Auto-enable missing prerequisites
+                                  const updated = [...customConfig.yAxes];
+                                  if (!updated.includes("Sales Value")) updated.push("Sales Value");
+                                  if (!updated.includes("Target Value")) updated.push("Target Value");
+                                  setCustomConfig({
+                                    ...customConfig,
+                                    yAxes: updated as any,
+                                    showAchievement: true
+                                  });
+                                } else {
+                                  setCustomConfig({
+                                    ...customConfig,
+                                    showAchievement: !isToggled
+                                  });
+                                }
+                              }}
+                              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-medium transition-all ${
+                                isToggled && meetsReq
+                                  ? 'border-emerald-500 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300'
+                                  : meetsReq
+                                  ? 'border-gray-300 bg-white text-gray-700 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 hover:border-emerald-300 hover:bg-emerald-50/10'
+                                  : 'border-gray-200 bg-gray-50 text-gray-400 dark:border-gray-800 dark:bg-gray-800/40 dark:text-gray-500 hover:border-gray-300 hover:text-gray-600 dark:hover:text-gray-300'
+                              }`}
+                              title={meetsReq ? "Toggle Achievement % line" : "Add Sales and Target first or click to auto-add"}
+                            >
+                              <TrendingUp size={14} className={isToggled && meetsReq ? "text-emerald-500" : "text-gray-400"} />
+                              <span>Achievement %</span>
+                              {!meetsReq && (
+                                <span className="text-[9px] bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 px-1 py-0.5 rounded ml-1 font-normal scale-90">
+                                  + auto
+                                </span>
+                              )}
+                            </button>
+                          );
+                        })()}
+
+                        {/* Growth % Toggle */}
+                        {(() => {
+                          const meetsReq = customConfig.yAxes.includes("Sales Value") && customConfig.yAxes.includes("Past Year Value");
+                          const isToggled = customConfig.showGrowth;
+                          return (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (!meetsReq) {
+                                  // Auto-enable missing prerequisites
+                                  const updated = [...customConfig.yAxes];
+                                  if (!updated.includes("Sales Value")) updated.push("Sales Value");
+                                  if (!updated.includes("Past Year Value")) updated.push("Past Year Value");
+                                  setCustomConfig({
+                                    ...customConfig,
+                                    yAxes: updated as any,
+                                    showGrowth: true
+                                  });
+                                } else {
+                                  setCustomConfig({
+                                    ...customConfig,
+                                    showGrowth: !isToggled
+                                  });
+                                }
+                              }}
+                              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-medium transition-all ${
+                                isToggled && meetsReq
+                                  ? 'border-purple-500 bg-purple-50 text-purple-700 dark:bg-purple-950/30 dark:text-purple-300'
+                                  : meetsReq
+                                  ? 'border-gray-300 bg-white text-gray-700 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 hover:border-purple-300 hover:bg-purple-50/10'
+                                  : 'border-gray-200 bg-gray-50 text-gray-400 dark:border-gray-800 dark:bg-gray-800/40 dark:text-gray-500 hover:border-gray-300 hover:text-gray-600 dark:hover:text-gray-300'
+                              }`}
+                              title={meetsReq ? "Toggle Growth % line" : "Add Sales and Past Year first or click to auto-add"}
+                            >
+                              <Activity size={14} className={isToggled && meetsReq ? "text-purple-500" : "text-gray-400"} />
+                              <span>Growth %</span>
+                              {!meetsReq && (
+                                <span className="text-[9px] bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 px-1 py-0.5 rounded ml-1 font-normal scale-90">
+                                  + auto
+                                </span>
+                              )}
+                            </button>
+                          );
+                        })()}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
               
-              <div className="p-6 h-[400px]">
+              <div className="p-6 h-[400px]" id="custom-chart">
                 {renderCustomChart()}
               </div>
             </div>
@@ -1093,25 +1325,106 @@ export function Dashboard({ data, theme, toggleTheme, onBack, savedVersions, onL
 
 // Sub-components
 
-function KpiCard({ title, value, subtitle, trend, icon }: { title: string, value: string, subtitle: string, trend?: 'up'|'down', icon?: React.ReactNode }) {
+function KpiCard({ 
+  title, 
+  value, 
+  subtitle, 
+  trend, 
+  icon,
+  variant = 'blue'
+}: { 
+  title: string, 
+  value: string, 
+  subtitle: string, 
+  trend?: 'up'|'down', 
+  icon?: React.ReactNode,
+  variant?: 'green' | 'blue' | 'orange' | 'purple'
+}) {
+  let gradientClass = "";
+  let svgBackground = null;
+
+  if (variant === 'green') {
+    // Left-1: Teal/Emerald light gradient with overlapping circles
+    gradientClass = "from-emerald-50/75 via-teal-50/50 to-emerald-50/60 border-emerald-200 dark:from-emerald-950/20 dark:via-teal-950/20 dark:to-emerald-950/30 dark:border-emerald-900/30";
+    svgBackground = (
+      <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 300 150" fill="none" preserveAspectRatio="xMidYMid slice">
+        <circle cx="0" cy="75" r="115" fill="#059669" opacity="0.05" />
+        <circle cx="0" cy="75" r="85" fill="#059669" opacity="0.07" />
+        <circle cx="0" cy="75" r="55" fill="#059669" opacity="0.04" />
+        <circle cx="230" cy="-10" r="95" fill="#059669" opacity="0.04" />
+        <circle cx="230" cy="-10" r="65" fill="#059669" opacity="0.03" />
+      </svg>
+    );
+  } else if (variant === 'blue') {
+    // Right-1: Blue/Indigo light gradient with circular arc & diagonal rotated card
+    gradientClass = "from-sky-50/70 via-blue-50/50 to-indigo-50/60 border-blue-200 dark:from-sky-950/20 dark:via-blue-950/20 dark:to-indigo-950/30 dark:border-blue-900/30";
+    svgBackground = (
+      <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 300 150" fill="none" preserveAspectRatio="xMidYMid slice">
+        <circle cx="30" cy="125" r="55" fill="#2563EB" opacity="0.09" />
+        <g transform="translate(250, 30) rotate(35)">
+          <rect x="-45" y="-45" width="90" height="90" rx="14" fill="#2563EB" opacity="0.07" />
+        </g>
+      </svg>
+    );
+  } else if (variant === 'orange') {
+    // Left-2 / Middle-right inspired: Coral Red / Salmon Rose with overlapping diagonal panels
+    gradientClass = "from-red-50/70 via-orange-50/50 to-amber-50/60 border-orange-200 dark:from-red-950/20 dark:via-orange-950/20 dark:to-amber-950/30 dark:border-orange-900/30";
+    svgBackground = (
+      <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 300 150" fill="none" preserveAspectRatio="xMidYMid slice">
+        <polygon points="60,-20 180,-20 110,170 -10,170" fill="#EA580C" opacity="0.06" />
+        <polygon points="140,-20 280,-20 210,170 70,170" fill="#EA580C" opacity="0.08" />
+        <polygon points="-40,-20 80,-20 10,170 -110,170" fill="#EA580C" opacity="0.04" />
+      </svg>
+    );
+  } else {
+    // Variant purple/violet (Left-2 & Right-3): Purple/Fuchsia gradient with diagonal shard cuts
+    gradientClass = "from-violet-50/70 via-purple-50/50 to-fuchsia-50/60 border-purple-200 dark:from-violet-950/20 dark:via-purple-950/20 dark:to-fuchsia-950/30 dark:border-purple-900/30";
+    svgBackground = (
+      <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 300 150" fill="none" preserveAspectRatio="xMidYMid slice">
+        <polygon points="-20,-20 180,65 -20,150" fill="#9333EA" opacity="0.05" />
+        <polygon points="320,10 210,120 320,160" fill="#9333EA" opacity="0.07" />
+        <polygon points="120,-20 320,-20 320,80" fill="#9333EA" opacity="0.03" />
+      </svg>
+    );
+  }
+
+  const cardId = `kpi-card-${title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+
   return (
-    <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col justify-between relative overflow-hidden">
-      <div className="flex justify-between items-start mb-2">
-        <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">{title}</h3>
-        {icon && (
-          <div className="text-blue-500 dark:text-blue-400 opacity-80">
-            {icon}
-          </div>
-        )}
-      </div>
-      <div className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2">{value}</div>
-      <div className="flex items-center gap-2">
-        {trend && (
-          <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${trend === 'up' ? 'text-green-700 bg-green-100 dark:text-green-400 dark:bg-green-900/30' : 'text-red-700 bg-red-100 dark:text-red-400 dark:bg-red-900/30'}`}>
-            {trend === 'up' ? '▲' : '▼'}
-          </span>
-        )}
-        <span className="text-xs text-gray-500 dark:text-gray-400">{subtitle}</span>
+    <div 
+      id={cardId}
+      className={`bg-gradient-to-br ${gradientClass} text-slate-800 dark:text-slate-200 p-6 rounded-xl border shadow-sm flex flex-col justify-between relative overflow-hidden transition-all duration-300 hover:shadow-md hover:scale-[1.01]`}
+    >
+      {svgBackground}
+      
+      {/* Content wrapper with relative positioning for proper layering on top of SVG */}
+      <div className="relative z-10 flex flex-col justify-between h-full w-full">
+        <div className="flex justify-between items-start mb-4">
+          <h3 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{title}</h3>
+          {icon && (
+            <div className="text-blue-900 dark:text-blue-300 bg-blue-500/10 dark:bg-blue-400/10 p-1.5 rounded-lg border border-blue-500/10 shadow-sm shrink-0">
+              {icon}
+            </div>
+          )}
+        </div>
+        
+        <div className="text-3xl font-extrabold text-[#0F172A] dark:text-blue-100 tracking-tight leading-none mb-3 select-all">
+          {value}
+        </div>
+        
+        <div className="flex items-center gap-2">
+          {trend && (
+            <span className={`text-[10px] font-extrabold px-1.5 py-0.5 rounded-md flex items-center gap-0.5 border shadow-sm uppercase tracking-wider ${
+              trend === 'up' 
+                ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-800/50' 
+                : 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/30 dark:text-rose-450 dark:border-rose-800/50'
+            }`}>
+              <span>{trend === 'up' ? '▲' : '▼'}</span>
+              <span>{trend === 'up' ? 'UP' : 'DN'}</span>
+            </span>
+          )}
+          <span className="text-xs text-slate-500 dark:text-slate-450 font-medium">{subtitle}</span>
+        </div>
       </div>
     </div>
   );

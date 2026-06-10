@@ -427,9 +427,10 @@ export function Login({ onLogin, theme, toggleTheme }: LoginProps) {
                   exit={{ opacity: 0, x: 10 }}
                   transition={{ duration: 0.15 }}
                 >
-                  <h2 className="text-xl font-bold mb-5 flex items-center gap-2 text-gray-800 dark:text-white">
-                    <ShieldCheck className="text-blue-600 dark:text-blue-400" size={22} />
-                    Login
+                  <h2 className="text-xl font-bold tracking-tight text-gray-900 dark:text-white flex items-center gap-2.5 mb-6">
+                    <ShieldCheck className="text-slate-800 dark:text-slate-200" size={20} strokeWidth={2.5} />
+                    <span className="uppercase tracking-wider text-xs font-semibold text-slate-400 select-none">Access /</span>
+                    <span className="font-extrabold text-slate-800 dark:text-slate-100">Login</span>
                   </h2>
 
                   {error && (
@@ -518,10 +519,10 @@ export function Login({ onLogin, theme, toggleTheme }: LoginProps) {
 
                     <button
                       type="submit"
-                      className="w-full flex items-center justify-center gap-2 py-3.5 bg-slate-100 hover:bg-slate-200/80 text-slate-800 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-white text-sm font-bold rounded-xl border border-slate-200 dark:border-slate-600 shadow-sm active:scale-[0.99] transition-all cursor-pointer"
+                      className="w-full flex items-center justify-center gap-2 py-3 bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:hover:bg-slate-100 dark:text-slate-900 text-sm font-semibold rounded-xl shadow-[0_2px_8px_rgba(0,0,0,0.08)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.12)] active:scale-[0.985] transition-all duration-200 cursor-pointer"
                     >
                       Login
-                      <ArrowRight size={16} className="text-slate-600 dark:text-slate-300" />
+                      <ArrowRight size={15} strokeWidth={2.5} className="text-white/80 dark:text-slate-800" />
                     </button>
                   </form>
 
