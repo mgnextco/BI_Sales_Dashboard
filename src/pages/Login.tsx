@@ -408,7 +408,11 @@ export function Login({ onLogin, theme, toggleTheme }: LoginProps) {
           <div className="p-8 text-center bg-gradient-to-tr from-slate-100 via-slate-200/50 to-slate-200/90 dark:bg-none dark:bg-slate-800 text-slate-800 dark:text-slate-100 flex flex-col items-center relative overflow-hidden border-b border-slate-200/60 dark:border-slate-705/50">
             <div className="absolute inset-0 bg-radial-gradient from-slate-200/60 to-transparent dark:hidden pointer-events-none" />
             <div className="flex items-center justify-center gap-3 relative z-10">
-              <img src="/logo_icon.png" alt="Logo" className="w-[55px] h-[74px] object-contain drop-shadow-sm" />
+              <img 
+                src="/Logoicon.png" 
+                alt="Logo" 
+                className="w-auto h-12 object-contain drop-shadow-sm" 
+              />
               <div className="text-left">
                 <h1 className="text-2xl font-black tracking-tight text-slate-900 dark:text-slate-50">BI Sales Dashboard</h1>
                 <p className="text-slate-500 dark:text-slate-400 text-xs font-semibold">Enterprise Analytics Platform</p>

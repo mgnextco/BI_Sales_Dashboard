@@ -359,7 +359,11 @@ export function Intro({ onDataLoaded, savedVersions, onLoadVersion, onDeleteVers
     <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors duration-200">
       <header className="px-8 py-6 bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <img src="/logo_icon.png" alt="Logo" className="w-auto h-10 object-contain drop-shadow-sm" />
+          <img 
+            src="/Logoicon.png" 
+            alt="Logo" 
+            className="w-auto h-10 object-contain drop-shadow-sm" 
+          />
           <h1 className="text-2xl font-bold tracking-tight text-blue-600 dark:text-blue-400">BI Sales Dashboard</h1>
         </div>
         <div className="flex items-center gap-4">

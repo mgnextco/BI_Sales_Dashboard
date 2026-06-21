@@ -751,7 +751,11 @@ export function Dashboard({ data, theme, toggleTheme, onBack, savedVersions, onL
             <ArrowLeft size={20} />
           </button>
           <div className="flex items-center gap-2">
-            <img src="/logo_icon.png" alt="Logo" className="w-auto h-8 object-contain" />
+            <img 
+              src="/Logoicon.png" 
+              alt="Logo" 
+              className="w-auto h-8 object-contain" 
+            />
             <h1 className="text-xl font-bold tracking-tight text-blue-600 dark:text-blue-400 hidden sm:block">BI Sales Dashboard</h1>
           </div>
         </div>
