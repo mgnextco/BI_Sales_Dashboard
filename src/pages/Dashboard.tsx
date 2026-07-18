@@ -289,6 +289,7 @@ export function Dashboard({ data, theme, toggleTheme, onBack, savedVersions, onL
     if (force) {
       setAiInsights("");
     }
+    
     const summaryText = `
       Dashboard Summary:
       Total Sales: ${KPIs.totalSales}
@@ -303,9 +304,22 @@ export function Dashboard({ data, theme, toggleTheme, onBack, savedVersions, onL
       Please provide a brief, professional, corporate business analysis of these high-level figures. 
       Focus on trends, potential risks, and recommendations. Keep it under 200 words. Do not use markdown headers, just plain paragraphs.
     `;
-    const response = await generateInsights(summaryText);
-    setAiInsights(response);
-    setIsGenerating(false);
+
+    try {
+      const response = await generateInsights(summaryText);
+      setAiInsights(response);
+    } catch (err: any) {
+      console.error("Failed to generate AI Insights:", err);
+      // Fallback to local compiler directly in case of any unhandled exceptions
+      try {
+        const { compileLocalInsights } = await import("../lib/gemini");
+        setAiInsights(compileLocalInsights(summaryText));
+      } catch (innerErr) {
+        setAiInsights("An unexpected error occurred while generating insights. Please verify your connection or try again.");
+      }
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   useEffect(() => {

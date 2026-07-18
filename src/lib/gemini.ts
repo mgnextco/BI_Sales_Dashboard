@@ -58,10 +58,11 @@ export async function generateInsights(prompt: string): Promise<string> {
       body: JSON.stringify({ prompt })
     });
     
-    // If the server route is configured and succeeds, return its response
-    if (response.ok) {
+    // Only parse if response is OK and contentType is JSON (to avoid crashing on HTML SPA fallback pages on Cloudflare)
+    const contentType = response.headers.get("content-type");
+    if (response.ok && contentType && contentType.includes("application/json")) {
       const data = await response.json();
-      if (data.text) {
+      if (data && data.text) {
         return data.text;
       }
     }
@@ -84,16 +85,32 @@ async function executeClientFallback(prompt: string): Promise<string> {
   
   if (clientKey && clientKey.trim().length > 10) {
     try {
-      // Dynamically import @google/genai to prevent inflating the initial bundle size
-      const { GoogleGenAI } = await import("@google/genai");
-      const ai = new GoogleGenAI({ apiKey: clientKey });
-      
-      const response = await ai.models.generateContent({
-        model: "gemini-3.5-flash",
-        contents: prompt,
+      // Use direct REST call to Google Gemini API to avoid packaging Node-dependent @google/genai in browser environment
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${clientKey}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          contents: [{
+            parts: [{
+              text: prompt
+            }]
+          }]
+        })
       });
-      
-      return response.text || "No insights generated.";
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Gemini API returned status ${response.status}: ${errorText}`);
+      }
+
+      const data = await response.json();
+      const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (text) {
+        return text;
+      }
+      throw new Error("Invalid or empty response structure from Gemini API");
     } catch (clientErr: any) {
       console.error("Direct client-side Gemini execution failed:", clientErr);
       return `### Client-Side Gemini Generation Failed\n\nError: ${clientErr.message || clientErr}\n\nFalling back to compiled telemetry analytics:\n\n${compileLocalInsights(prompt)}`;
