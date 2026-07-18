@@ -99,12 +99,37 @@ async function executeClientFallback(prompt: string): Promise<string> {
         const { GoogleGenAI } = await import("@google/genai");
         const ai = new GoogleGenAI({ apiKey: clientKey });
         
-        const response = await ai.models.generateContent({
-          model: "gemini-3.5-flash",
-          contents: prompt,
-        });
-        
-        return response.text || "No insights generated.";
+        const candidateModels = [
+          "gemini-3.5-flash",
+          "gemini-2.5-flash",
+          "gemini-2.0-flash",
+          "gemini-1.5-flash"
+        ];
+
+        let clientResponseText = "";
+        let lastClientError = null;
+
+        for (const model of candidateModels) {
+          try {
+            const response = await ai.models.generateContent({
+              model: model,
+              contents: prompt,
+            });
+            if (response && response.text) {
+              clientResponseText = response.text;
+              break;
+            }
+          } catch (modelErr: any) {
+            console.warn(`Client-side model ${model} failed:`, modelErr?.message || modelErr);
+            lastClientError = modelErr;
+          }
+        }
+
+        if (clientResponseText) {
+          return clientResponseText;
+        } else {
+          throw lastClientError || new Error("All client candidate models failed.");
+        }
       } catch (clientErr: any) {
         console.error("Direct client-side Gemini execution failed:", clientErr);
         return `### Client-Side Gemini Generation Failed\n\nError: ${clientErr.message || clientErr}\n\nFalling back to compiled telemetry analytics:\n\n${compileLocalInsights(prompt)}`;

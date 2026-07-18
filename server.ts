@@ -47,12 +47,37 @@ async function startServer() {
       }
 
       const client = getAiClient();
-      const response = await client.models.generateContent({
-        model: "gemini-3.5-flash",
-        contents: prompt,
-      });
+      const candidateModels = [
+        "gemini-3.5-flash",
+        "gemini-2.5-flash",
+        "gemini-2.0-flash",
+        "gemini-1.5-flash"
+      ];
 
-      res.json({ text: response.text || "No insights generated." });
+      let responseText = "";
+      let lastError = null;
+
+      for (const model of candidateModels) {
+        try {
+          const response = await client.models.generateContent({
+            model: model,
+            contents: prompt,
+          });
+          if (response && response.text) {
+            responseText = response.text;
+            break;
+          }
+        } catch (err: any) {
+          console.warn(`Server-side model ${model} failed:`, err?.message || err);
+          lastError = err;
+        }
+      }
+
+      if (responseText) {
+        res.json({ text: responseText });
+      } else {
+        throw lastError || new Error("All candidate models failed to generate content.");
+      }
     } catch (error: any) {
       console.error("Server-side Gemini Error:", error);
       res.status(500).json({ error: error.message || "Error generating insights from Gemini API" });

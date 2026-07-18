@@ -1441,19 +1441,19 @@ export function Dashboard({ data, theme, toggleTheme, onBack, savedVersions, onL
                 </button>
               </div>
 
-              {/* Collapsible API Key Configuration for Serverless/Cloudflare Deployment */}
+              {/* Collapsible API Key Configuration for Client-Side / Personal Account Integration */}
               <div className="bg-gray-50 dark:bg-gray-800/60 border-b border-gray-200 dark:border-gray-700/80 px-6 py-2.5 flex flex-col gap-2 transition-all">
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-gray-500 dark:text-gray-400 font-sans flex items-center gap-1.5">
                     <Settings size={13} className="text-purple-500" />
-                    Cloudflare Static Deployment Mode Fallback System
+                    Gemini API Configuration (End-User Personal Key)
                   </span>
                   <button
                     type="button"
                     onClick={() => setShowKeyConfig(!showKeyConfig)}
                     className="text-xs font-semibold text-purple-600 dark:text-purple-400 hover:underline flex items-center gap-1 cursor-pointer"
                   >
-                    {showKeyConfig ? "Hide API Settings" : "Configure Gemini API Key"}
+                    {showKeyConfig ? "Hide API Settings" : "Use Your Own Gemini API Key"}
                   </button>
                 </div>
                 
@@ -1465,8 +1465,8 @@ export function Dashboard({ data, theme, toggleTheme, onBack, savedVersions, onL
                     className="flex flex-col gap-2 pt-1 pb-2 overflow-hidden"
                   >
                     <p className="text-[11px] text-gray-500 dark:text-gray-400 font-sans leading-normal">
-                      On static hosting platforms like Cloudflare Pages, your server-side Express backend/API proxy is offline. 
-                      You can input your personal Gemini API key below to run real AI analysis directly in your browser (saved securely in your local browser storage).
+                      If the default shared server-side key experiences service limits or region restrictions, you can provide your own personal Google AI Studio Gemini API key. 
+                      Your key is saved 100% securely inside your local browser storage and is sent directly to Google's endpoints.
                     </p>
                     <div className="flex gap-2">
                       <div className="relative flex-1">
@@ -1475,7 +1475,7 @@ export function Dashboard({ data, theme, toggleTheme, onBack, savedVersions, onL
                         </span>
                         <input
                           type="password"
-                          placeholder="Enter your Gemini API Key (e.g., AI_...) "
+                          placeholder="Paste your personal Gemini API Key (AI_...) "
                           value={customApiKey}
                           onChange={(e) => setCustomApiKey(e.target.value)}
                           className="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-purple-500"
