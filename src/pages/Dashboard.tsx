@@ -733,11 +733,96 @@ export function Dashboard({ data, theme, toggleTheme, onBack, savedVersions, onL
   };
 
   const handleExportPDF = () => exportToPDF("dashboard-content", theme === "dark", "Sales_Dashboard.pdf");
-  const handleExportPPTX = () => exportToPPTX(
-    ["chart-0", "chart-1", "chart-2", "chart-3", "chart-4", "chart-5", "chart-6", "chart-7", "chart-8", "chart-9", "chart-10", "chart-11"], 
-    filteredData,
-    theme === "dark"
-  );
+  const handleExportPPTX = () => {
+    const slideConfigs = [
+      {
+        id: "chart-0",
+        title: "Sales vs Target by Month",
+        insight: dynamicInsights.chart0,
+        headers: ["Month", "Sales", "Target"],
+        rows: salesByMonth.slice(-6).map(r => [r.Month, r.Sales, r.Target])
+      },
+      {
+        id: "chart-1",
+        title: "Sales Distribution by Region",
+        insight: dynamicInsights.chart1,
+        headers: ["Region", "Sales"],
+        rows: salesByRegion.slice(0, 5).map(r => [r.Region, r.Sales])
+      },
+      {
+        id: "chart-2",
+        title: "Top 5 Brands by Sales",
+        insight: dynamicInsights.chart2,
+        headers: ["Brand", "Sales"],
+        rows: topBrands.slice(0, 5).map(r => [r.Brand, r.Sales])
+      },
+      {
+        id: "chart-3",
+        title: "Sales vs Past Year by Category",
+        insight: dynamicInsights.chart3,
+        headers: ["Category", "Sales", "Past Year"],
+        rows: salesVsPastYear.slice(0, 5).map(r => [r.Category, r.Sales, r.PastYear])
+      },
+      {
+        id: "chart-4",
+        title: "BU Line Contribution",
+        insight: dynamicInsights.chart4,
+        headers: ["BU Line", "Sales"],
+        rows: salesByBU.slice(0, 5).map(r => [r.name, r.value])
+      },
+      {
+        id: "chart-5",
+        title: "Sales Trend vs Last Year",
+        insight: dynamicInsights.chart5,
+        headers: ["Month", "Sales", "Past Year"],
+        rows: salesByMonth.slice(-6).map(r => [r.Month, r.Sales, r.PastYear])
+      },
+      {
+        id: "chart-6",
+        title: "Sales by Therapy Area",
+        insight: dynamicInsights.chart6,
+        headers: ["Therapy Area", "Sales"],
+        rows: salesByTherapyArea.slice(0, 5).map(r => [r.TherapyArea, r.Sales])
+      },
+      {
+        id: "chart-7",
+        title: "Top 5 Assignees Performance",
+        insight: dynamicInsights.chart7,
+        headers: ["Assignee", "Sales", "Target"],
+        rows: salesByAssignee.slice(0, 5).map(r => [r.Assignee, r.Sales, r.Target])
+      },
+      {
+        id: "chart-8",
+        title: "Target Gap by Region",
+        insight: dynamicInsights.chart8,
+        headers: ["Region", "Gap"],
+        rows: gapByRegion.slice(0, 5).map(r => [r.Region, r.Gap])
+      },
+      {
+        id: "chart-9",
+        title: "Achievement % by BU Line",
+        insight: dynamicInsights.chart9,
+        headers: ["BU Line", "Achievement %"],
+        rows: achievementByBu.slice(0, 5).map(r => [r.BU, `${r.Achievement.toFixed(1)}%`])
+      },
+      {
+        id: "chart-10",
+        title: "Sales Distribution by Category",
+        insight: dynamicInsights.chart10,
+        headers: ["Category", "Sales"],
+        rows: salesByCategory.slice(0, 5).map(r => [r.name, r.value])
+      },
+      {
+        id: "chart-11",
+        title: "Achievement % by Therapy Area",
+        insight: dynamicInsights.chart11,
+        headers: ["Therapy Area", "Achievement %"],
+        rows: achievementByTherapyArea.slice(0, 5).map(r => [r.name, `${r.Achievement.toFixed(1)}%`])
+      }
+    ];
+
+    exportToPPTX(slideConfigs, theme === "dark");
+  };
   
   const handleChartImg = (id: string, name: string) => exportChartImage(id, theme === "dark", `${name}.png`);
   const handleChartCSV = (data: any[], name: string) => exportChartCSV(data, `${name}.csv`);
@@ -788,16 +873,113 @@ export function Dashboard({ data, theme, toggleTheme, onBack, savedVersions, onL
             ))}
           </div>
 
-          <button type="button" onClick={generateFullPageInsights} className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-purple-600 bg-purple-50 dark:bg-purple-900/20 dark:text-purple-400 rounded-lg hover:bg-purple-100 dark:hover:bg-purple-900/40 transition-colors">
-            <BrainCircuit size={16} />
-            AI Insights
+          <motion.button 
+            type="button" 
+            onClick={generateFullPageInsights} 
+            style={{
+              backgroundImage: "linear-gradient(270deg, #4285F4, #EA4335, #FBBC05, #34A853, #4285F4)",
+              backgroundSize: "300% 300%",
+            }}
+            animate={{
+              backgroundPosition: ["0% 50%", "100% 50%", "0% 50%"],
+            }}
+            transition={{
+              duration: 5,
+              repeat: Infinity,
+              ease: "linear"
+            }}
+            className="group flex items-center gap-2 px-4 py-1.5 text-xs font-bold text-white rounded-full hover:scale-105 active:scale-95 transition-all duration-300 cursor-pointer border-none shadow-[0_3px_15px_rgba(66,133,244,0.35)] hover:shadow-[0_4px_22px_rgba(66,133,244,0.6)] relative overflow-hidden ring-1 ring-white/20"
+            title="Generate AI Insights"
+          >
+            {/* Smooth sliding premium shimmer light effect */}
+            <motion.div
+              className="absolute inset-y-0 w-1/2 bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none"
+              initial={{ x: "-150%" }}
+              animate={{ x: "250%" }}
+              transition={{
+                repeat: Infinity,
+                repeatType: "loop",
+                duration: 2.5,
+                ease: "easeInOut"
+              }}
+            />
+
+            <motion.span
+              animate={{
+                scale: [1, 1.2, 0.95, 1.2, 1],
+                rotate: [0, 12, -12, 12, 0]
+              }}
+              transition={{
+                repeat: Infinity,
+                duration: 3,
+                ease: "easeInOut"
+              }}
+              className="flex items-center justify-center shrink-0 relative z-10"
+            >
+              <BrainCircuit size={17} className="stroke-[2.5] drop-shadow-[0_0_4px_rgba(255,255,255,0.7)]" />
+            </motion.span>
+            
+            <motion.span
+              animate={{
+                textShadow: [
+                  "0 0 2px rgba(255,255,255,0.3)",
+                  "0 0 8px rgba(255,255,255,0.8)",
+                  "0 0 2px rgba(255,255,255,0.3)"
+                ]
+              }}
+              transition={{
+                repeat: Infinity,
+                duration: 2,
+                ease: "easeInOut"
+              }}
+              className="tracking-wider relative z-10 font-black uppercase text-[11px]"
+            >
+              AI Insights
+            </motion.span>
+          </motion.button>
+          
+          <button 
+            type="button" 
+            onClick={handleExportPDF} 
+            className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold text-gray-700 dark:text-gray-200 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/20 hover:text-rose-600 dark:hover:text-rose-400 transition-all cursor-pointer border-none"
+            title="Download Dashboard PDF"
+          >
+            <motion.span
+              animate={{
+                color: ["#f43f5e", "#f97316", "#be123c", "#f43f5e"]
+              }}
+              transition={{
+                repeat: Infinity,
+                duration: 5,
+                ease: "linear"
+              }}
+              className="flex items-center justify-center shrink-0"
+            >
+              <Download size={17} className="stroke-[2.25]" />
+            </motion.span>
+            <span>PDF</span>
           </button>
           
-          <button type="button" onClick={handleExportPDF} className="p-2 text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors" title="Export Dashboard PDF">
-            <FileText size={18} />
-          </button>
-          <button type="button" onClick={handleExportPPTX} className="p-2 text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors" title="Export Dashboard PPTX">
-            <Presentation size={18} />
+          <button 
+            type="button" 
+            onClick={handleExportPPTX} 
+            className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold text-gray-700 dark:text-gray-200 rounded-lg hover:bg-amber-50 dark:hover:bg-amber-950/20 hover:text-amber-600 dark:hover:text-amber-400 transition-all cursor-pointer border-none"
+            title="Download Dashboard PPTX"
+          >
+            <motion.span
+              animate={{
+                color: ["#ea580c", "#f59e0b", "#b45309", "#ea580c"]
+              }}
+              transition={{
+                repeat: Infinity,
+                duration: 5,
+                ease: "linear"
+              }}
+              className="flex items-center justify-center shrink-0"
+            >
+              <Download size={17} className="stroke-[2.25]" />
+            </motion.span>
+            <span>PPTX</span>
           </button>
           
           {onInstall && (
@@ -1256,10 +1438,404 @@ export function Dashboard({ data, theme, toggleTheme, onBack, savedVersions, onL
                   <div className="whitespace-pre-wrap">{aiInsights}</div>
                 )}
               </div>
-              <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex justify-end bg-gray-50 dark:bg-gray-800/50">
+              <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-3 bg-gray-50 dark:bg-gray-800/50">
                 <button 
                   type="button"
-                  disabled={isGenerating}
+                  disabled={isGenerating || !aiInsights}
+                  onClick={() => {
+                    // 1. Helper to format markdown in aiInsights to HTML
+                    const formatMarkdownToHtml = (markdown: string) => {
+                      if (!markdown) return "";
+                      return markdown
+                        .replace(/^### (.*$)/gim, '<h3 class="text-xs font-extrabold uppercase tracking-widest text-indigo-600 mt-4 mb-2 flex items-center gap-1.5">$1</h3>')
+                        .replace(/^## (.*$)/gim, '<h2 class="text-sm font-bold text-slate-800 mt-4 mb-2.5 border-b border-slate-100 pb-1 flex items-center gap-1.5">$1</h2>')
+                        .replace(/^# (.*$)/gim, '<h1 class="text-base font-extrabold text-slate-950 mt-5 mb-3 flex items-center gap-1.5">$1</h1>')
+                        .replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold text-slate-900">$1</strong>')
+                        .replace(/\*(.*?)\*/g, '<em class="italic text-slate-600">$1</em>')
+                        .replace(/^\s*[-*+]\s+(.*)$/gim, '<li class="ml-4 list-disc text-slate-600 text-[11px] my-1">$1</li>')
+                        .split('\n')
+                        .map(line => {
+                          const trimmed = line.trim();
+                          if (trimmed.startsWith('<li') || trimmed.startsWith('<h')) {
+                            return trimmed;
+                          }
+                          return trimmed ? `<p class="text-slate-600 text-[11px] leading-relaxed mb-2">${trimmed}</p>` : '';
+                        })
+                        .filter(Boolean)
+                        .join('\n');
+                    };
+
+                    // 2. Prepare dynamic metrics for template
+                    const formattedSales = formatAbbreviatedValue(KPIs.totalSales);
+                    const formattedAchievement = KPIs.achievement.toFixed(1) + "%";
+                    const formattedGap = formatAbbreviatedValue(Math.abs(KPIs.gapToTarget));
+                    const formattedGrowth = KPIs.growth.toFixed(1) + "%";
+                    const gapLabel = KPIs.gapToTarget >= 0 ? "Above Target" : "Below Target";
+                    const gapColor = KPIs.gapToTarget >= 0 ? "text-emerald-600" : "text-rose-600";
+                    const gapBg = KPIs.gapToTarget >= 0 ? "bg-emerald-50 text-emerald-700 border-emerald-100" : "bg-rose-50 text-rose-700 border-rose-100";
+                    const growthColor = KPIs.growth >= 0 ? "text-emerald-600" : "text-rose-600";
+                    const growthBg = KPIs.growth >= 0 ? "bg-emerald-50 text-emerald-700 border-emerald-100" : "bg-rose-50 text-rose-700 border-rose-100";
+
+                    const cleanInsightsHtml = formatMarkdownToHtml(aiInsights);
+                    
+                    // Specific premium icons for each of the available dashboard metrics / insights
+                    const getIconForChart = (key: string) => {
+                      switch (key) {
+                        case "chart0": // Sales vs Target Trend
+                          return `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-indigo-600"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>`;
+                        case "chart1": // Regional Contributions
+                          return `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-blue-600"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>`;
+                        case "chart2": // Top Brands Status
+                          return `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-amber-500"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>`;
+                        case "chart3": // Category Growth Rate
+                          return `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-emerald-600"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>`;
+                        case "chart4": // BU Line Composition
+                          return `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-purple-600"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg>`;
+                        case "chart5": // Historical Sales Trend
+                          return `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-rose-500"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`;
+                        case "chart6": // Therapeutic Specialization
+                          return `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-teal-600"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>`;
+                        case "chart7": // Top Performers Contribution
+                          return `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-orange-500"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`;
+                        case "chart8": // Target Deviation Gaps
+                          return `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-red-500"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>`;
+                        case "chart9": // Business Unit Milestones
+                          return `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-sky-600"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>`;
+                        case "chart10": // Category Sales Share
+                          return `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-cyan-600"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>`;
+                        case "chart11": // Therapeutic Milestones
+                          return `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-emerald-500"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>`;
+                        default:
+                          return `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-slate-500"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>`;
+                      }
+                    };
+
+                    const chartInsightsHtml = Object.entries(dynamicInsights)
+                      .map(([key, value]) => {
+                        let title = "Insight";
+                        if (key === "chart0") title = "Sales vs Target Trend";
+                        if (key === "chart1") title = "Regional Contributions";
+                        if (key === "chart2") title = "Top Brands Status";
+                        if (key === "chart3") title = "Category Growth Rate";
+                        if (key === "chart4") title = "BU Line Composition";
+                        if (key === "chart5") title = "Historical Sales Trend";
+                        if (key === "chart6") title = "Therapeutic Specialization";
+                        if (key === "chart7") title = "Top Performers Contribution";
+                        if (key === "chart8") title = "Target Deviation Gaps";
+                        if (key === "chart9") title = "Business Unit Milestones";
+                        if (key === "chart10") title = "Category Sales Share";
+                        if (key === "chart11") title = "Therapeutic Milestones";
+                        
+                        const iconSvg = getIconForChart(key);
+                        
+                        return `
+                          <div class="p-2.5 bg-white rounded-lg border border-slate-100 flex items-start gap-2.5 shadow-[0_1px_3px_rgba(0,0,0,0.02)] hover:shadow-sm transition-all duration-150">
+                            <div class="flex-shrink-0 p-1 bg-slate-50 rounded-md border border-slate-100/50 mt-0.5">
+                              ${iconSvg}
+                            </div>
+                            <div class="space-y-0.5">
+                              <p class="text-[9px] font-bold text-slate-400 uppercase tracking-wider">${title}</p>
+                              <p class="text-[11px] text-slate-600 leading-normal font-sans font-medium">${value}</p>
+                            </div>
+                          </div>
+                        `;
+                      }).join("\n");
+
+                    const currentDateTime = new Date().toLocaleString("en-US", { 
+                      dateStyle: "long", 
+                      timeStyle: "short" 
+                    });
+
+                    // 3. Construct HTML document content with a premium LIGHT theme
+                    const htmlContent = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Executive Business Performance Infographic</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background-color: #f8fafc;
+      color: #1e293b;
+    }
+    .mono-font {
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .premium-card {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+    }
+    .accent-gradient {
+      background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 50%, #db2777 100%);
+    }
+    .glow-effect {
+      box-shadow: 0 4px 20px -2px rgba(99, 102, 241, 0.05);
+    }
+    @media screen {
+      .a4-page {
+        width: 297mm;
+        height: 210mm;
+        padding: 10mm 12mm;
+        margin: 30px auto;
+        background: radial-gradient(circle at 100% 100%, #f1f5f9 0%, #ffffff 100%);
+        box-shadow: 0 20px 40px -15px rgba(15, 23, 42, 0.08);
+        border-radius: 16px;
+        box-sizing: border-box;
+        overflow: hidden;
+        border: 1px solid #e2e8f0;
+        position: relative;
+      }
+      .a4-page::before {
+        content: '';
+        position: absolute;
+        top: -150px;
+        right: -150px;
+        width: 400px;
+        height: 400px;
+        background: radial-gradient(circle, rgba(99, 102, 241, 0.04) 0%, transparent 70%);
+        pointer-events: none;
+      }
+    }
+    @media print {
+      body {
+        background-color: #ffffff;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      @page {
+        size: landscape;
+        margin: 0;
+      }
+      .a4-page {
+        width: 297mm;
+        height: 210mm;
+        padding: 10mm 12mm;
+        margin: 0;
+        box-shadow: none;
+        border-radius: 0;
+        box-sizing: border-box;
+        background: #ffffff !important;
+        page-break-after: always;
+      }
+      .no-print {
+        display: none;
+      }
+    }
+    /* Custom thin scrollbar */
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 4px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: rgba(0, 0, 0, 0.01);
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: rgba(148, 163, 184, 0.3);
+      border-radius: 2px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+      background: rgba(148, 163, 184, 0.5);
+    }
+  </style>
+</head>
+<body class="leading-relaxed selection:bg-indigo-100 selection:text-indigo-900">
+  <!-- Print Instruction Bar -->
+  <div class="no-print max-w-[297mm] mx-auto mt-6 px-5 py-4 bg-white border border-slate-200/80 rounded-xl text-slate-600 text-sm flex items-center justify-between shadow-md">
+    <div class="flex items-center gap-3">
+      <div class="w-2.5 h-2.5 rounded-full bg-indigo-600 animate-pulse"></div>
+      <span class="font-medium text-slate-700">Executive Performance Landing Page (Light Mode). Save to PDF via standard print <strong class="text-slate-900">(Ctrl + P / Cmd + P)</strong>.</span>
+    </div>
+    <div class="flex gap-2">
+      <button onclick="window.print()" class="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-semibold text-xs transition duration-150 shadow-sm shadow-indigo-600/10">Print / Export PDF</button>
+    </div>
+  </div>
+
+  <div class="a4-page flex flex-col justify-between">
+    <!-- Main Content Section -->
+    <div class="space-y-4">
+      <!-- Premium Landing-Style Top Navigation Bar -->
+      <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+        <div class="flex items-center gap-3">
+          <div class="w-8 h-8 rounded-lg accent-gradient flex items-center justify-center shadow-md shadow-indigo-500/10">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="text-white"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+          </div>
+          <div>
+            <div class="flex items-center gap-1.5">
+              <span class="text-[10px] font-bold uppercase tracking-wider text-indigo-600">Commercial Intelligence Hub</span>
+              <span class="px-1.5 py-0.5 bg-emerald-50 text-emerald-600 font-extrabold text-[8px] rounded border border-emerald-200">LIVE SYNCED</span>
+            </div>
+            <h1 class="text-xs font-extrabold text-slate-900 tracking-tight leading-none mt-0.5">EXECUTIVE COMMAND SUMMARY</h1>
+          </div>
+        </div>
+        
+        <!-- Center Badges -->
+        <div class="flex items-center gap-3">
+          <div class="flex items-center gap-1.5 px-2.5 py-1 bg-slate-50 border border-slate-200/50 rounded-full text-[9px] text-slate-600 font-semibold">
+            <span class="w-1.5 h-1.5 rounded-full bg-indigo-600"></span>
+            <span>ACCURACY: <strong class="text-indigo-700 font-bold">99.8%</strong></span>
+          </div>
+          <div class="flex items-center gap-1.5 px-2.5 py-1 bg-slate-50 border border-slate-200/50 rounded-full text-[9px] text-slate-600 font-semibold">
+            <span class="w-1.5 h-1.5 rounded-full bg-purple-600"></span>
+            <span>AI ENGINE VERIFIED</span>
+          </div>
+        </div>
+
+        <div class="text-right mono-font text-[9px] text-slate-400 font-medium">
+          <div>REF: <span class="text-indigo-600 font-semibold">BI-L-${Math.floor(100000 + Math.random() * 900000)}</span></div>
+          <div>COMPILED: <span class="text-slate-600">${currentDateTime}</span></div>
+        </div>
+      </div>
+
+      <!-- Hero Title + Metrics Summary Grid -->
+      <div class="grid grid-cols-12 gap-4 items-center">
+        <!-- Brand Message / Landing Hero Intro -->
+        <div class="col-span-4 space-y-1">
+          <p class="text-[9px] font-bold text-indigo-600 tracking-widest uppercase">Performance Analysis Suite</p>
+          <h2 class="text-lg font-black text-slate-900 leading-tight">
+            Commercial <br />
+            <span class="text-transparent bg-clip-text accent-gradient">Growth Engine</span>
+          </h2>
+          <p class="text-[10px] text-slate-500 leading-normal max-w-xs font-medium">
+            Strategic dynamic metrics synthesized instantly with verified therapy area segments.
+          </p>
+        </div>
+
+        <!-- 4 Premium KPI Glass Cards -->
+        <div class="col-span-8 grid grid-cols-4 gap-3">
+          <!-- KPI 1 -->
+          <div class="premium-card p-3 rounded-xl glow-effect flex flex-col justify-between relative overflow-hidden group shadow-[0_1px_3px_rgba(0,0,0,0.01)]">
+            <div class="absolute top-0 left-0 w-1 h-full bg-indigo-500"></div>
+            <div class="flex items-center justify-between">
+              <span class="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Total Sales</span>
+              <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="text-indigo-500"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+            </div>
+            <span class="text-lg font-extrabold text-slate-900 my-1 tracking-tight">${formattedSales}</span>
+            <div class="flex items-center justify-between text-[9px] text-slate-500 font-medium">
+              <span>Actual Value</span>
+              <span class="text-indigo-600 font-bold font-mono">100% Share</span>
+            </div>
+          </div>
+          <!-- KPI 2 -->
+          <div class="premium-card p-3 rounded-xl glow-effect flex flex-col justify-between relative overflow-hidden group shadow-[0_1px_3px_rgba(0,0,0,0.01)]">
+            <div class="absolute top-0 left-0 w-1 h-full bg-blue-500"></div>
+            <div class="flex items-center justify-between">
+              <span class="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Achievement</span>
+              <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="text-blue-500"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+            </div>
+            <span class="text-lg font-extrabold text-slate-900 my-1 tracking-tight">${formattedAchievement}</span>
+            <div class="flex items-center justify-between text-[9px] text-slate-500 font-medium">
+              <span>vs Target Limit</span>
+              <span class="px-1 py-0.5 rounded ${KPIs.achievement >= 100 ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'} text-[8px] font-bold">
+                ${KPIs.achievement >= 100 ? '▲ Target Met' : '▼ Shortfall'}
+              </span>
+            </div>
+          </div>
+          <!-- KPI 3 -->
+          <div class="premium-card p-3 rounded-xl glow-effect flex flex-col justify-between relative overflow-hidden group shadow-[0_1px_3px_rgba(0,0,0,0.01)]">
+            <div class="absolute top-0 left-0 w-1 h-full bg-amber-500"></div>
+            <div class="flex items-center justify-between">
+              <span class="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Target Variance</span>
+              <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="text-amber-500"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+            </div>
+            <span class="text-lg font-extrabold text-slate-900 my-1 tracking-tight">${formattedGap}</span>
+            <div class="flex items-center justify-between text-[9px] text-slate-500 font-medium">
+              <span>Status</span>
+              <span class="px-1 py-0.5 rounded ${gapBg} text-[8px] font-bold">
+                ${gapLabel}
+              </span>
+            </div>
+          </div>
+          <!-- KPI 4 -->
+          <div class="premium-card p-3 rounded-xl glow-effect flex flex-col justify-between relative overflow-hidden group shadow-[0_1px_3px_rgba(0,0,0,0.01)]">
+            <div class="absolute top-0 left-0 w-1 h-full bg-purple-500"></div>
+            <div class="flex items-center justify-between">
+              <span class="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Growth vs LY</span>
+              <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="text-purple-500"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+            </div>
+            <span class="text-lg font-extrabold text-slate-900 my-1 tracking-tight">${formattedGrowth}</span>
+            <div class="flex items-center justify-between text-[9px] text-slate-500 font-medium">
+              <span>Annual Status</span>
+              <span class="px-1 py-0.5 rounded ${growthBg} text-[8px] font-bold">
+                ${KPIs.growth >= 0 ? '▲ Positive' : '▼ Negative'}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Landing Page Dual-Grid Detail Panels -->
+      <div class="grid grid-cols-12 gap-4">
+        <!-- Left Column (7 cols): Deep AI Analytical Insights -->
+        <div class="col-span-7 premium-card p-4 rounded-xl flex flex-col justify-between h-[360px] shadow-[0_1px_3px_rgba(0,0,0,0.01)]">
+          <div>
+            <div class="flex items-center justify-between border-b border-slate-100 pb-2 mb-3">
+              <div class="flex items-center gap-2">
+                <div class="w-2 h-2 rounded-full bg-purple-600 animate-pulse"></div>
+                <h3 class="text-xs font-bold text-slate-800 uppercase tracking-widest">Executive AI Narrative</h3>
+              </div>
+              <span class="text-[8px] mono-font text-slate-400 uppercase">Context-Aware Generated Insights</span>
+            </div>
+            
+            <!-- Beautiful AI Analysis Markdown Container in Light Theme -->
+            <div class="custom-scrollbar overflow-y-auto max-h-[290px] pr-2 space-y-2 text-slate-600 text-xs font-medium">
+              ${cleanInsightsHtml || '<p class="text-slate-400 italic font-sans">No executive narrative summary generated yet.</p>'}
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Column (5 cols): Dynamic Telemetry Feed -->
+        <div class="col-span-5 premium-card bg-slate-50/50 p-4 rounded-xl flex flex-col justify-between h-[360px] shadow-[0_1px_3px_rgba(0,0,0,0.01)]">
+          <div>
+            <div class="flex items-center justify-between border-b border-slate-100 pb-2 mb-3">
+              <div class="flex items-center gap-2">
+                <div class="w-2 h-2 rounded-full bg-indigo-600 animate-pulse"></div>
+                <h3 class="text-xs font-bold text-slate-800 uppercase tracking-widest">Commercial Telemetry Stream</h3>
+              </div>
+              <span class="text-[8px] mono-font text-indigo-600 font-bold uppercase tracking-wider">Active Signals</span>
+            </div>
+
+            <!-- Dynamic telemetry cards feed in Light Theme -->
+            <div class="custom-scrollbar overflow-y-auto max-h-[290px] pr-1 space-y-2">
+              ${chartInsightsHtml}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Custom High-End SaaS Footer -->
+    <div class="border-t border-slate-100 pt-3 flex justify-between items-center text-[9px] text-slate-400 font-semibold mono-font uppercase">
+      <div class="flex items-center gap-4">
+        <span>CONFIDENTIAL REPORT - PROPRIETARY BI SUITE</span>
+        <span class="text-slate-200">|</span>
+        <span>EXECUTIVE SESSION USER: <span class="text-slate-600 font-bold">${userEmail || 'GUEST_EXECUTIVE'}</span></span>
+      </div>
+      <div class="flex items-center gap-1.5 text-emerald-600 font-bold">
+        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+        <span>TELEMETRY STABLE</span>
+      </div>
+    </div>
+  </div>
+</body>
+</html>`;
+
+                    const blob = new Blob([htmlContent], { type: "text/html" });
+                    const link = document.createElement("a");
+                    link.href = URL.createObjectURL(blob);
+                    link.target = "_blank";
+                    link.download = "Performance_Infographic.html";
+                    link.click();
+                  }}
+                  className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  <PaletteIcon size={18} />
+                  Generate Infographic (A4)
+                </button>
+                <button 
+                  type="button"
+                  disabled={isGenerating || !aiInsights}
                   onClick={() => {
                      const blob = new Blob([aiInsights], { type: "text/plain" });
                      const link = document.createElement("a");
@@ -1446,7 +2022,7 @@ function ChartCard({ title, children, id, insight, onDownloadImg, onDownloadCsv,
             </p>
           )}
         </div>
-        <div className="flex items-center gap-1 shrink-0">
+        <div className="flex items-center gap-1 shrink-0 download-action-container">
           {onExpand && (
             <button type="button" onClick={onExpand} title="Expand View" className="p-1.5 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-md transition-all active:scale-95">
               <Expand size={14} />

@@ -19,3 +19,12 @@ export interface FilterState {
   Category: string[];
   Month: string[];
 }
+
+export interface PPTSlideConfig {
+  id: string;
+  title: string;
+  insight: string;
+  headers: string[];
+  rows: Array<Array<string | number>>;
+}
+
