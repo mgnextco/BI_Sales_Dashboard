@@ -50,13 +50,19 @@ Based on the latest automated business intelligence telemetry, our consolidated 
 export async function generateInsights(prompt: string): Promise<string> {
   // 1. Try server-side API proxy first
   try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 2000);
+
     const response = await fetch("/api/gemini/generate", {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
       },
-      body: JSON.stringify({ prompt })
+      body: JSON.stringify({ prompt }),
+      signal: controller.signal
     });
+    
+    clearTimeout(timeoutId);
     
     // Only parse if response is OK and contentType is JSON (to avoid crashing on HTML SPA fallback pages on Cloudflare)
     const contentType = response.headers.get("content-type");
@@ -66,14 +72,8 @@ export async function generateInsights(prompt: string): Promise<string> {
         return data.text;
       }
     }
-    
-    // If we get a 404, we are likely on static hosting like Cloudflare Pages
-    if (response.status === 404) {
-      console.warn("Express backend server (404) not found. Falling back to client-side execution/local compiler.");
-      return await executeClientFallback(prompt);
-    }
   } catch (err: any) {
-    console.warn("Failed to contact server API. Falling back to client-side execution/local compiler.", err);
+    console.warn("Failed to contact server API or timed out. Falling back to client-side execution/local compiler.", err);
   }
 
   // 2. Client-side execution fallback

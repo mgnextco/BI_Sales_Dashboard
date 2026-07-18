@@ -5,7 +5,7 @@ import { SlicerPane } from "../components/SlicerPane";
 import { motion, AnimatePresence } from "motion/react";
 import { formatAbbreviatedValue } from "../lib/utils";
 import { exportToPDF, exportToPPTX, exportChartImage, exportChartCSV } from "../lib/exportUtils";
-import { generateInsights } from "../lib/gemini";
+import { generateInsights, compileLocalInsights } from "../lib/gemini";
 import { 
   Sun, Moon, Download, FileText, Presentation, 
   Save, Expand, X, BrainCircuit, Loader2, Image as ImageIcon, FileSpreadsheet, ArrowLeft, Smartphone,
@@ -297,8 +297,8 @@ export function Dashboard({ data, theme, toggleTheme, onBack, savedVersions, onL
       Achievement: ${KPIs.achievement.toFixed(2)}%
       Growth vs Past Year: ${KPIs.growth.toFixed(2)}%
       
-      Top Region: ${salesByRegion.sort((a,b)=>b.Sales - a.Sales)[0]?.Region}
-      Top BU: ${salesByBU.sort((a,b)=>b.value - a.value)[0]?.name}
+      Top Region: ${[...salesByRegion].sort((a,b)=>b.Sales - a.Sales)[0]?.Region}
+      Top BU: ${[...salesByBU].sort((a,b)=>b.value - a.value)[0]?.name}
       Top Brand: ${topBrands[0]?.Brand}
       
       Please provide a brief, professional, corporate business analysis of these high-level figures. 
@@ -312,7 +312,6 @@ export function Dashboard({ data, theme, toggleTheme, onBack, savedVersions, onL
       console.error("Failed to generate AI Insights:", err);
       // Fallback to local compiler directly in case of any unhandled exceptions
       try {
-        const { compileLocalInsights } = await import("../lib/gemini");
         setAiInsights(compileLocalInsights(summaryText));
       } catch (innerErr) {
         setAiInsights("An unexpected error occurred while generating insights. Please verify your connection or try again.");
@@ -894,7 +893,7 @@ export function Dashboard({ data, theme, toggleTheme, onBack, savedVersions, onL
 
           <motion.button 
             type="button" 
-            onClick={generateFullPageInsights} 
+            onClick={() => generateFullPageInsights(false)} 
             style={{
               backgroundImage: "linear-gradient(270deg, #4285F4, #EA4335, #FBBC05, #34A853, #4285F4)",
               backgroundSize: "300% 300%",
