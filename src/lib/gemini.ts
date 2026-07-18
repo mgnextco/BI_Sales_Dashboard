@@ -64,11 +64,8 @@ export async function generateInsights(prompt: string): Promise<string> {
       if (data.text) {
         return data.text;
       }
-    }
-    
-    // If we get a 404, we are likely on static hosting like Cloudflare Pages
-    if (response.status === 404) {
-      console.warn("Express backend server (404) not found. Falling back to client-side execution/local compiler.");
+    } else {
+      console.warn(`Express backend server returned status ${response.status}. Falling back to client-side execution.`);
       return await executeClientFallback(prompt);
     }
   } catch (err: any) {
@@ -80,26 +77,43 @@ export async function generateInsights(prompt: string): Promise<string> {
 }
 
 async function executeClientFallback(prompt: string): Promise<string> {
-  const clientKey = localStorage.getItem("USER_GEMINI_API_KEY") || (import.meta as any).env?.VITE_GEMINI_API_KEY;
-  
-  if (clientKey && clientKey.trim().length > 10) {
+  try {
+    let clientKey = "";
     try {
-      // Dynamically import @google/genai to prevent inflating the initial bundle size
-      const { GoogleGenAI } = await import("@google/genai");
-      const ai = new GoogleGenAI({ apiKey: clientKey });
-      
-      const response = await ai.models.generateContent({
-        model: "gemini-3.5-flash",
-        contents: prompt,
-      });
-      
-      return response.text || "No insights generated.";
-    } catch (clientErr: any) {
-      console.error("Direct client-side Gemini execution failed:", clientErr);
-      return `### Client-Side Gemini Generation Failed\n\nError: ${clientErr.message || clientErr}\n\nFalling back to compiled telemetry analytics:\n\n${compileLocalInsights(prompt)}`;
+      clientKey = localStorage.getItem("USER_GEMINI_API_KEY") || "";
+    } catch (e) {
+      console.warn("localStorage is not accessible:", e);
     }
+
+    if (!clientKey) {
+      try {
+        clientKey = (import.meta as any).env?.VITE_GEMINI_API_KEY || "";
+      } catch (e) {
+        console.warn("import.meta.env is not accessible:", e);
+      }
+    }
+    
+    if (clientKey && clientKey.trim().length > 10) {
+      try {
+        // Dynamically import @google/genai to prevent inflating the initial bundle size
+        const { GoogleGenAI } = await import("@google/genai");
+        const ai = new GoogleGenAI({ apiKey: clientKey });
+        
+        const response = await ai.models.generateContent({
+          model: "gemini-3.5-flash",
+          contents: prompt,
+        });
+        
+        return response.text || "No insights generated.";
+      } catch (clientErr: any) {
+        console.error("Direct client-side Gemini execution failed:", clientErr);
+        return `### Client-Side Gemini Generation Failed\n\nError: ${clientErr.message || clientErr}\n\nFalling back to compiled telemetry analytics:\n\n${compileLocalInsights(prompt)}`;
+      }
+    }
+  } catch (err: any) {
+    console.error("Error in executeClientFallback wrapper:", err);
   }
 
-  // 3. Perfect mathematical compiler fallback if no key is configured
+  // 3. Perfect mathematical compiler fallback if no key is configured or direct fallback fails
   return compileLocalInsights(prompt);
 }

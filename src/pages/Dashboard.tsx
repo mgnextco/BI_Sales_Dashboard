@@ -5,7 +5,7 @@ import { SlicerPane } from "../components/SlicerPane";
 import { motion, AnimatePresence } from "motion/react";
 import { formatAbbreviatedValue } from "../lib/utils";
 import { exportToPDF, exportToPPTX, exportChartImage, exportChartCSV } from "../lib/exportUtils";
-import { generateInsights } from "../lib/gemini";
+import { generateInsights, compileLocalInsights } from "../lib/gemini";
 import { 
   Sun, Moon, Download, FileText, Presentation, 
   Save, Expand, X, BrainCircuit, Loader2, Image as ImageIcon, FileSpreadsheet, ArrowLeft, Smartphone,
@@ -281,7 +281,8 @@ export function Dashboard({ data, theme, toggleTheme, onBack, savedVersions, onL
     })).sort((a,b) => b.Achievement - a.Achievement);
   }, [filteredData]);
 
-  const generateFullPageInsights = async (force = false) => {
+  const generateFullPageInsights = async (forceParam?: any) => {
+    const force = forceParam === true;
     setShowInsightsOverlay(true);
     if (aiInsights && !force) return;
     
@@ -303,9 +304,15 @@ export function Dashboard({ data, theme, toggleTheme, onBack, savedVersions, onL
       Please provide a brief, professional, corporate business analysis of these high-level figures. 
       Focus on trends, potential risks, and recommendations. Keep it under 200 words. Do not use markdown headers, just plain paragraphs.
     `;
-    const response = await generateInsights(summaryText);
-    setAiInsights(response);
-    setIsGenerating(false);
+    try {
+      const response = await generateInsights(summaryText);
+      setAiInsights(response);
+    } catch (error: any) {
+      console.error("AI Insights Error:", error);
+      setAiInsights(`### AI Generation Offline\n\nFailed to receive real-time AI response: ${error?.message || error}. Falling back to compiled telemetry analytics:\n\n${compileLocalInsights(summaryText)}`);
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   useEffect(() => {
