@@ -5,7 +5,7 @@ import { SlicerPane } from "../components/SlicerPane";
 import { motion, AnimatePresence } from "motion/react";
 import { formatAbbreviatedValue } from "../lib/utils";
 import { exportToPDF, exportToPPTX, exportChartImage, exportChartCSV } from "../lib/exportUtils";
-import { generateInsights, compileLocalInsights } from "../lib/gemini";
+import { generateInsights } from "../lib/gemini";
 import { 
   Sun, Moon, Download, FileText, Presentation, 
   Save, Expand, X, BrainCircuit, Loader2, Image as ImageIcon, FileSpreadsheet, ArrowLeft, Smartphone,
@@ -289,7 +289,6 @@ export function Dashboard({ data, theme, toggleTheme, onBack, savedVersions, onL
     if (force) {
       setAiInsights("");
     }
-    
     const summaryText = `
       Dashboard Summary:
       Total Sales: ${KPIs.totalSales}
@@ -297,28 +296,16 @@ export function Dashboard({ data, theme, toggleTheme, onBack, savedVersions, onL
       Achievement: ${KPIs.achievement.toFixed(2)}%
       Growth vs Past Year: ${KPIs.growth.toFixed(2)}%
       
-      Top Region: ${[...salesByRegion].sort((a,b)=>b.Sales - a.Sales)[0]?.Region}
-      Top BU: ${[...salesByBU].sort((a,b)=>b.value - a.value)[0]?.name}
+      Top Region: ${salesByRegion.sort((a,b)=>b.Sales - a.Sales)[0]?.Region}
+      Top BU: ${salesByBU.sort((a,b)=>b.value - a.value)[0]?.name}
       Top Brand: ${topBrands[0]?.Brand}
       
       Please provide a brief, professional, corporate business analysis of these high-level figures. 
       Focus on trends, potential risks, and recommendations. Keep it under 200 words. Do not use markdown headers, just plain paragraphs.
     `;
-
-    try {
-      const response = await generateInsights(summaryText);
-      setAiInsights(response);
-    } catch (err: any) {
-      console.error("Failed to generate AI Insights:", err);
-      // Fallback to local compiler directly in case of any unhandled exceptions
-      try {
-        setAiInsights(compileLocalInsights(summaryText));
-      } catch (innerErr) {
-        setAiInsights("An unexpected error occurred while generating insights. Please verify your connection or try again.");
-      }
-    } finally {
-      setIsGenerating(false);
-    }
+    const response = await generateInsights(summaryText);
+    setAiInsights(response);
+    setIsGenerating(false);
   };
 
   useEffect(() => {
@@ -893,7 +880,7 @@ export function Dashboard({ data, theme, toggleTheme, onBack, savedVersions, onL
 
           <motion.button 
             type="button" 
-            onClick={() => generateFullPageInsights(false)} 
+            onClick={generateFullPageInsights} 
             style={{
               backgroundImage: "linear-gradient(270deg, #4285F4, #EA4335, #FBBC05, #34A853, #4285F4)",
               backgroundSize: "300% 300%",
@@ -1445,6 +1432,75 @@ export function Dashboard({ data, theme, toggleTheme, onBack, savedVersions, onL
                 >
                   <X size={20} />
                 </button>
+              </div>
+
+              {/* Collapsible API Key Configuration for Serverless/Cloudflare Deployment */}
+              <div className="bg-gray-50 dark:bg-gray-800/60 border-b border-gray-200 dark:border-gray-700/80 px-6 py-2.5 flex flex-col gap-2 transition-all">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-gray-500 dark:text-gray-400 font-sans flex items-center gap-1.5">
+                    <Settings size={13} className="text-purple-500" />
+                    Cloudflare Static Deployment Mode Fallback System
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setShowKeyConfig(!showKeyConfig)}
+                    className="text-xs font-semibold text-purple-600 dark:text-purple-400 hover:underline flex items-center gap-1 cursor-pointer"
+                  >
+                    {showKeyConfig ? "Hide API Settings" : "Configure Gemini API Key"}
+                  </button>
+                </div>
+                
+                {showKeyConfig && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="flex flex-col gap-2 pt-1 pb-2 overflow-hidden"
+                  >
+                    <p className="text-[11px] text-gray-500 dark:text-gray-400 font-sans leading-normal">
+                      On static hosting platforms like Cloudflare Pages, your server-side Express backend/API proxy is offline. 
+                      You can input your personal Gemini API key below to run real AI analysis directly in your browser (saved securely in your local browser storage).
+                    </p>
+                    <div className="flex gap-2">
+                      <div className="relative flex-1">
+                        <span className="absolute inset-y-0 left-0 flex items-center pl-2.5 text-gray-400">
+                          <Key size={13} />
+                        </span>
+                        <input
+                          type="password"
+                          placeholder="Enter your Gemini API Key (e.g., AI_...) "
+                          value={customApiKey}
+                          onChange={(e) => setCustomApiKey(e.target.value)}
+                          className="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-purple-500"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          localStorage.setItem("USER_GEMINI_API_KEY", customApiKey);
+                          generateFullPageInsights(true);
+                        }}
+                        className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white font-sans text-xs font-semibold rounded-lg flex items-center gap-1.5 hover:scale-[1.02] active:scale-95 transition-all cursor-pointer"
+                      >
+                        <Check size={13} />
+                        Save & Generate
+                      </button>
+                      {localStorage.getItem("USER_GEMINI_API_KEY") && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            localStorage.removeItem("USER_GEMINI_API_KEY");
+                            setCustomApiKey("");
+                            generateFullPageInsights(true);
+                          }}
+                          className="px-3 py-1.5 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 font-sans text-xs font-semibold rounded-lg hover:scale-[1.02] active:scale-95 transition-all cursor-pointer"
+                        >
+                          Clear Key
+                        </button>
+                      )}
+                    </div>
+                  </motion.div>
+                )}
               </div>
 
               <div className="p-6 overflow-y-auto font-serif text-lg leading-relaxed text-gray-700 dark:text-gray-300 flex-1">

@@ -50,30 +50,29 @@ Based on the latest automated business intelligence telemetry, our consolidated 
 export async function generateInsights(prompt: string): Promise<string> {
   // 1. Try server-side API proxy first
   try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 2000);
-
     const response = await fetch("/api/gemini/generate", {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
       },
-      body: JSON.stringify({ prompt }),
-      signal: controller.signal
+      body: JSON.stringify({ prompt })
     });
     
-    clearTimeout(timeoutId);
-    
-    // Only parse if response is OK and contentType is JSON (to avoid crashing on HTML SPA fallback pages on Cloudflare)
-    const contentType = response.headers.get("content-type");
-    if (response.ok && contentType && contentType.includes("application/json")) {
+    // If the server route is configured and succeeds, return its response
+    if (response.ok) {
       const data = await response.json();
-      if (data && data.text) {
+      if (data.text) {
         return data.text;
       }
     }
+    
+    // If we get a 404, we are likely on static hosting like Cloudflare Pages
+    if (response.status === 404) {
+      console.warn("Express backend server (404) not found. Falling back to client-side execution/local compiler.");
+      return await executeClientFallback(prompt);
+    }
   } catch (err: any) {
-    console.warn("Failed to contact server API or timed out. Falling back to client-side execution/local compiler.", err);
+    console.warn("Failed to contact server API. Falling back to client-side execution/local compiler.", err);
   }
 
   // 2. Client-side execution fallback
@@ -85,32 +84,16 @@ async function executeClientFallback(prompt: string): Promise<string> {
   
   if (clientKey && clientKey.trim().length > 10) {
     try {
-      // Use direct REST call to Google Gemini API to avoid packaging Node-dependent @google/genai in browser environment
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${clientKey}`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          contents: [{
-            parts: [{
-              text: prompt
-            }]
-          }]
-        })
+      // Dynamically import @google/genai to prevent inflating the initial bundle size
+      const { GoogleGenAI } = await import("@google/genai");
+      const ai = new GoogleGenAI({ apiKey: clientKey });
+      
+      const response = await ai.models.generateContent({
+        model: "gemini-3.5-flash",
+        contents: prompt,
       });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Gemini API returned status ${response.status}: ${errorText}`);
-      }
-
-      const data = await response.json();
-      const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-      if (text) {
-        return text;
-      }
-      throw new Error("Invalid or empty response structure from Gemini API");
+      
+      return response.text || "No insights generated.";
     } catch (clientErr: any) {
       console.error("Direct client-side Gemini execution failed:", clientErr);
       return `### Client-Side Gemini Generation Failed\n\nError: ${clientErr.message || clientErr}\n\nFalling back to compiled telemetry analytics:\n\n${compileLocalInsights(prompt)}`;
