@@ -5,11 +5,11 @@ import { SlicerPane } from "../components/SlicerPane";
 import { motion, AnimatePresence } from "motion/react";
 import { formatAbbreviatedValue } from "../lib/utils";
 import { exportToPDF, exportToPPTX, exportChartImage, exportChartCSV } from "../lib/exportUtils";
-import { generateInsights, compileLocalInsights } from "../lib/gemini";
+import { generateInsights } from "../lib/gemini";
 import { 
   Sun, Moon, Download, FileText, Presentation, 
   Save, Expand, X, BrainCircuit, Loader2, Image as ImageIcon, FileSpreadsheet, ArrowLeft, Smartphone,
-  BarChart3, DollarSign, Target, Activity, TrendingUp, LogOut, Palette as PaletteIcon, Settings, Key, Check
+  BarChart3, DollarSign, Target, Activity, TrendingUp, LogOut, Palette as PaletteIcon
 } from "lucide-react";
 import { 
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, 
@@ -64,97 +64,6 @@ const PALETTES = [
   }
 ];
 
-// Helper to highlight **bold** and *italic* text in react
-const renderBoldPhrases = (text: string) => {
-  if (!text) return "";
-  const parts = text.split(/\*\*(.*?)\*\*/g);
-  return parts.map((part, i) => {
-    if (i % 2 === 1) {
-      return <strong key={i} className="font-semibold text-gray-900 dark:text-white">{part}</strong>;
-    }
-    const italicParts = part.split(/\*(.*?)\*/g);
-    return italicParts.map((subpart, j) => {
-      if (j % 2 === 1) {
-        return <em key={j} className="italic text-gray-800 dark:text-gray-200">{subpart}</em>;
-      }
-      return subpart;
-    });
-  });
-};
-
-// Custom dynamic markdown renderer for gorgeous insights display
-const renderFormattedInsights = (text: string) => {
-  if (!text) return null;
-  const lines = text.split("\n");
-  return (
-    <div className="space-y-3.5 text-xs font-sans text-gray-700 dark:text-gray-300">
-      {lines.map((line, idx) => {
-        const trimmed = line.trim();
-        if (!trimmed) return <div key={idx} className="h-2" />;
-        
-        // Headers
-        if (trimmed.startsWith("###")) {
-          return (
-            <h3 key={idx} className="text-sm font-bold text-indigo-600 dark:text-indigo-400 mt-6 mb-2 flex items-center gap-1.5 border-b border-indigo-100 dark:border-indigo-900/40 pb-1">
-              {trimmed.replace(/^###\s*/, "")}
-            </h3>
-          );
-        }
-        if (trimmed.startsWith("##")) {
-          return (
-            <h2 key={idx} className="text-base font-extrabold text-slate-800 dark:text-slate-100 mt-7 mb-3 border-b border-slate-100 dark:border-slate-700 pb-1.5">
-              {trimmed.replace(/^##\s*/, "")}
-            </h2>
-          );
-        }
-        if (trimmed.startsWith("#")) {
-          return (
-            <h1 key={idx} className="text-lg font-black text-slate-900 dark:text-white mt-8 mb-4">
-              {trimmed.replace(/^#\s*/, "")}
-            </h1>
-          );
-        }
-        
-        // List items
-        if (trimmed.startsWith("-") || trimmed.startsWith("*")) {
-          const content = trimmed.replace(/^[-*]\s*/, "");
-          return (
-            <div key={idx} className="flex gap-2 items-start ml-2 pl-1">
-              <span className="text-indigo-500 dark:text-indigo-400 select-none mt-1.5 text-[8px]">•</span>
-              <p className="text-[12px] leading-relaxed text-gray-600 dark:text-gray-300">
-                {renderBoldPhrases(content)}
-              </p>
-            </div>
-          );
-        }
-        
-        // Numbered lists
-        if (/^\d+\./.test(trimmed)) {
-          const content = trimmed.replace(/^\d+\.\s*/, "");
-          const num = trimmed.match(/^\d+/)![0];
-          return (
-            <div key={idx} className="flex gap-2.5 items-start ml-2">
-              <span className="flex-shrink-0 flex items-center justify-center w-5 h-5 rounded-full bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400 text-[10px] font-bold">
-                {num}
-              </span>
-              <p className="text-[12px] leading-relaxed text-gray-600 dark:text-gray-300 pt-0.5">
-                {renderBoldPhrases(content)}
-              </p>
-            </div>
-          );
-        }
-        
-        // Standard paragraph
-        return (
-          <p key={idx} className="text-[12px] leading-relaxed text-gray-600 dark:text-gray-300">
-            {renderBoldPhrases(trimmed)}
-          </p>
-        );
-      })}
-    </div>
-  );
-};
-
 export function Dashboard({ data, theme, toggleTheme, onBack, savedVersions, onLoadVersion, onDeleteVersion, onRenameVersion, onLogout, onInstall, initialFilters, userEmail }: DashboardProps) {
   const [activePaletteIndex, setActivePaletteIndex] = useState(0);
   const activePalette = PALETTES[activePaletteIndex];
@@ -164,8 +73,6 @@ export function Dashboard({ data, theme, toggleTheme, onBack, savedVersions, onL
   const [showInsightsOverlay, setShowInsightsOverlay] = useState(false);
   const [aiInsights, setAiInsights] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
-  const [customApiKey, setCustomApiKey] = useState(() => localStorage.getItem("USER_GEMINI_API_KEY") || "");
-  const [showKeyConfig, setShowKeyConfig] = useState(false);
   
   const [expandedChartId, setExpandedChartId] = useState<string | null>(null);
   const [customConfig, setCustomConfig] = useState({
@@ -372,15 +279,11 @@ export function Dashboard({ data, theme, toggleTheme, onBack, savedVersions, onL
     })).sort((a,b) => b.Achievement - a.Achievement);
   }, [filteredData]);
 
-  const generateFullPageInsights = async (forceParam?: any) => {
-    const force = forceParam === true;
+  const generateFullPageInsights = async () => {
     setShowInsightsOverlay(true);
-    if (aiInsights && !force) return;
+    if (aiInsights) return;
     
     setIsGenerating(true);
-    if (force) {
-      setAiInsights("");
-    }
     const summaryText = `
       Dashboard Summary:
       Total Sales: ${KPIs.totalSales}
@@ -395,15 +298,9 @@ export function Dashboard({ data, theme, toggleTheme, onBack, savedVersions, onL
       Please provide a brief, professional, corporate business analysis of these high-level figures. 
       Focus on trends, potential risks, and recommendations. Keep it under 200 words. Do not use markdown headers, just plain paragraphs.
     `;
-    try {
-      const response = await generateInsights(summaryText);
-      setAiInsights(response);
-    } catch (error: any) {
-      console.error("AI Insights Error:", error);
-      setAiInsights(`### AI Generation Offline\n\nFailed to receive real-time AI response: ${error?.message || error}. Falling back to compiled telemetry analytics:\n\n${compileLocalInsights(summaryText)}`);
-    } finally {
-      setIsGenerating(false);
-    }
+    const response = await generateInsights(summaryText);
+    setAiInsights(response);
+    setIsGenerating(false);
   };
 
   useEffect(() => {
@@ -1531,76 +1428,6 @@ export function Dashboard({ data, theme, toggleTheme, onBack, savedVersions, onL
                   <X size={20} />
                 </button>
               </div>
-
-              {/* Collapsible API Key Configuration for Client-Side / Personal Account Integration */}
-              <div className="bg-gray-50 dark:bg-gray-800/60 border-b border-gray-200 dark:border-gray-700/80 px-6 py-2.5 flex flex-col gap-2 transition-all">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-gray-500 dark:text-gray-400 font-sans flex items-center gap-1.5">
-                    <Settings size={13} className="text-purple-500" />
-                    Gemini API Configuration (End-User Personal Key)
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setShowKeyConfig(!showKeyConfig)}
-                    className="text-xs font-semibold text-purple-600 dark:text-purple-400 hover:underline flex items-center gap-1 cursor-pointer"
-                  >
-                    {showKeyConfig ? "Hide API Settings" : "Use Your Own Gemini API Key"}
-                  </button>
-                </div>
-                
-                {showKeyConfig && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: "auto" }}
-                    exit={{ opacity: 0, height: 0 }}
-                    className="flex flex-col gap-2 pt-1 pb-2 overflow-hidden"
-                  >
-                    <p className="text-[11px] text-gray-500 dark:text-gray-400 font-sans leading-normal">
-                      If the default shared server-side key experiences service limits or region restrictions, you can provide your own personal Google AI Studio Gemini API key. 
-                      Your key is saved 100% securely inside your local browser storage and is sent directly to Google's endpoints.
-                    </p>
-                    <div className="flex gap-2">
-                      <div className="relative flex-1">
-                        <span className="absolute inset-y-0 left-0 flex items-center pl-2.5 text-gray-400">
-                          <Key size={13} />
-                        </span>
-                        <input
-                          type="password"
-                          placeholder="Paste your personal Gemini API Key (AI_...) "
-                          value={customApiKey}
-                          onChange={(e) => setCustomApiKey(e.target.value)}
-                          className="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-purple-500"
-                        />
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          localStorage.setItem("USER_GEMINI_API_KEY", customApiKey);
-                          generateFullPageInsights(true);
-                        }}
-                        className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white font-sans text-xs font-semibold rounded-lg flex items-center gap-1.5 hover:scale-[1.02] active:scale-95 transition-all cursor-pointer"
-                      >
-                        <Check size={13} />
-                        Save & Generate
-                      </button>
-                      {localStorage.getItem("USER_GEMINI_API_KEY") && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            localStorage.removeItem("USER_GEMINI_API_KEY");
-                            setCustomApiKey("");
-                            generateFullPageInsights(true);
-                          }}
-                          className="px-3 py-1.5 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 font-sans text-xs font-semibold rounded-lg hover:scale-[1.02] active:scale-95 transition-all cursor-pointer"
-                        >
-                          Clear Key
-                        </button>
-                      )}
-                    </div>
-                  </motion.div>
-                )}
-              </div>
-
               <div className="p-6 overflow-y-auto font-serif text-lg leading-relaxed text-gray-700 dark:text-gray-300 flex-1">
                 {isGenerating ? (
                   <div className="flex flex-col items-center justify-center h-48 space-y-4 text-purple-600 dark:text-purple-400">
@@ -1608,7 +1435,7 @@ export function Dashboard({ data, theme, toggleTheme, onBack, savedVersions, onL
                     <p className="font-sans text-sm font-medium animate-pulse">Analyzing dashboard metrics...</p>
                   </div>
                 ) : (
-                  <div>{renderFormattedInsights(aiInsights)}</div>
+                  <div className="whitespace-pre-wrap">{aiInsights}</div>
                 )}
               </div>
               <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-3 bg-gray-50 dark:bg-gray-800/50">

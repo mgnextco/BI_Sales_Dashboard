@@ -47,41 +47,15 @@ async function startServer() {
       }
 
       const client = getAiClient();
-      const candidateModels = [
-        "gemini-3.5-flash",
-        "gemini-3.1-flash-lite",
-        "gemini-flash-latest"
-      ];
+      const response = await client.models.generateContent({
+        model: "gemini-3.5-flash",
+        contents: prompt,
+      });
 
-      let responseText = "";
-      let lastError = null;
-
-      for (const model of candidateModels) {
-        try {
-          const response = await client.models.generateContent({
-            model: model,
-            contents: prompt,
-          });
-          if (response && response.text) {
-            responseText = response.text;
-            break;
-          }
-        } catch (err: any) {
-          const errMsg = err?.message || (typeof err === 'object' ? JSON.stringify(err) : String(err));
-          console.warn(`Server-side model ${model} failed: ${errMsg.slice(0, 150)}...`);
-          lastError = err;
-        }
-      }
-
-      if (responseText) {
-        res.json({ text: responseText });
-      } else {
-        throw lastError || new Error("All candidate models failed to generate content.");
-      }
+      res.json({ text: response.text || "No insights generated." });
     } catch (error: any) {
-      const errMsg = error?.message || String(error);
-      console.error("Server-side Gemini Error summary:", errMsg.slice(0, 200));
-      res.status(500).json({ error: errMsg || "Error generating insights from Gemini API" });
+      console.error("Server-side Gemini Error:", error);
+      res.status(500).json({ error: error.message || "Error generating insights from Gemini API" });
     }
   });
 
