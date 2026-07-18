@@ -9,7 +9,7 @@ import { generateInsights } from "../lib/gemini";
 import { 
   Sun, Moon, Download, FileText, Presentation, 
   Save, Expand, X, BrainCircuit, Loader2, Image as ImageIcon, FileSpreadsheet, ArrowLeft, Smartphone,
-  BarChart3, DollarSign, Target, Activity, TrendingUp, LogOut, Palette as PaletteIcon
+  BarChart3, DollarSign, Target, Activity, TrendingUp, LogOut, Palette as PaletteIcon, Settings, Key, Check
 } from "lucide-react";
 import { 
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, 
@@ -73,6 +73,8 @@ export function Dashboard({ data, theme, toggleTheme, onBack, savedVersions, onL
   const [showInsightsOverlay, setShowInsightsOverlay] = useState(false);
   const [aiInsights, setAiInsights] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
+  const [customApiKey, setCustomApiKey] = useState(() => localStorage.getItem("USER_GEMINI_API_KEY") || "");
+  const [showKeyConfig, setShowKeyConfig] = useState(false);
   
   const [expandedChartId, setExpandedChartId] = useState<string | null>(null);
   const [customConfig, setCustomConfig] = useState({
@@ -279,11 +281,14 @@ export function Dashboard({ data, theme, toggleTheme, onBack, savedVersions, onL
     })).sort((a,b) => b.Achievement - a.Achievement);
   }, [filteredData]);
 
-  const generateFullPageInsights = async () => {
+  const generateFullPageInsights = async (force = false) => {
     setShowInsightsOverlay(true);
-    if (aiInsights) return;
+    if (aiInsights && !force) return;
     
     setIsGenerating(true);
+    if (force) {
+      setAiInsights("");
+    }
     const summaryText = `
       Dashboard Summary:
       Total Sales: ${KPIs.totalSales}
@@ -1428,6 +1433,7 @@ export function Dashboard({ data, theme, toggleTheme, onBack, savedVersions, onL
                   <X size={20} />
                 </button>
               </div>
+
               <div className="p-6 overflow-y-auto font-serif text-lg leading-relaxed text-gray-700 dark:text-gray-300 flex-1">
                 {isGenerating ? (
                   <div className="flex flex-col items-center justify-center h-48 space-y-4 text-purple-600 dark:text-purple-400">
