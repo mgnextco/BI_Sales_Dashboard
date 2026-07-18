@@ -64,6 +64,97 @@ const PALETTES = [
   }
 ];
 
+// Helper to highlight **bold** and *italic* text in react
+const renderBoldPhrases = (text: string) => {
+  if (!text) return "";
+  const parts = text.split(/\*\*(.*?)\*\*/g);
+  return parts.map((part, i) => {
+    if (i % 2 === 1) {
+      return <strong key={i} className="font-semibold text-gray-900 dark:text-white">{part}</strong>;
+    }
+    const italicParts = part.split(/\*(.*?)\*/g);
+    return italicParts.map((subpart, j) => {
+      if (j % 2 === 1) {
+        return <em key={j} className="italic text-gray-800 dark:text-gray-200">{subpart}</em>;
+      }
+      return subpart;
+    });
+  });
+};
+
+// Custom dynamic markdown renderer for gorgeous insights display
+const renderFormattedInsights = (text: string) => {
+  if (!text) return null;
+  const lines = text.split("\n");
+  return (
+    <div className="space-y-3.5 text-xs font-sans text-gray-700 dark:text-gray-300">
+      {lines.map((line, idx) => {
+        const trimmed = line.trim();
+        if (!trimmed) return <div key={idx} className="h-2" />;
+        
+        // Headers
+        if (trimmed.startsWith("###")) {
+          return (
+            <h3 key={idx} className="text-sm font-bold text-indigo-600 dark:text-indigo-400 mt-6 mb-2 flex items-center gap-1.5 border-b border-indigo-100 dark:border-indigo-900/40 pb-1">
+              {trimmed.replace(/^###\s*/, "")}
+            </h3>
+          );
+        }
+        if (trimmed.startsWith("##")) {
+          return (
+            <h2 key={idx} className="text-base font-extrabold text-slate-800 dark:text-slate-100 mt-7 mb-3 border-b border-slate-100 dark:border-slate-700 pb-1.5">
+              {trimmed.replace(/^##\s*/, "")}
+            </h2>
+          );
+        }
+        if (trimmed.startsWith("#")) {
+          return (
+            <h1 key={idx} className="text-lg font-black text-slate-900 dark:text-white mt-8 mb-4">
+              {trimmed.replace(/^#\s*/, "")}
+            </h1>
+          );
+        }
+        
+        // List items
+        if (trimmed.startsWith("-") || trimmed.startsWith("*")) {
+          const content = trimmed.replace(/^[-*]\s*/, "");
+          return (
+            <div key={idx} className="flex gap-2 items-start ml-2 pl-1">
+              <span className="text-indigo-500 dark:text-indigo-400 select-none mt-1.5 text-[8px]">•</span>
+              <p className="text-[12px] leading-relaxed text-gray-600 dark:text-gray-300">
+                {renderBoldPhrases(content)}
+              </p>
+            </div>
+          );
+        }
+        
+        // Numbered lists
+        if (/^\d+\./.test(trimmed)) {
+          const content = trimmed.replace(/^\d+\.\s*/, "");
+          const num = trimmed.match(/^\d+/)![0];
+          return (
+            <div key={idx} className="flex gap-2.5 items-start ml-2">
+              <span className="flex-shrink-0 flex items-center justify-center w-5 h-5 rounded-full bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400 text-[10px] font-bold">
+                {num}
+              </span>
+              <p className="text-[12px] leading-relaxed text-gray-600 dark:text-gray-300 pt-0.5">
+                {renderBoldPhrases(content)}
+              </p>
+            </div>
+          );
+        }
+        
+        // Standard paragraph
+        return (
+          <p key={idx} className="text-[12px] leading-relaxed text-gray-600 dark:text-gray-300">
+            {renderBoldPhrases(trimmed)}
+          </p>
+        );
+      })}
+    </div>
+  );
+};
+
 export function Dashboard({ data, theme, toggleTheme, onBack, savedVersions, onLoadVersion, onDeleteVersion, onRenameVersion, onLogout, onInstall, initialFilters, userEmail }: DashboardProps) {
   const [activePaletteIndex, setActivePaletteIndex] = useState(0);
   const activePalette = PALETTES[activePaletteIndex];
@@ -1517,7 +1608,7 @@ export function Dashboard({ data, theme, toggleTheme, onBack, savedVersions, onL
                     <p className="font-sans text-sm font-medium animate-pulse">Analyzing dashboard metrics...</p>
                   </div>
                 ) : (
-                  <div className="whitespace-pre-wrap">{aiInsights}</div>
+                  <div>{renderFormattedInsights(aiInsights)}</div>
                 )}
               </div>
               <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-3 bg-gray-50 dark:bg-gray-800/50">

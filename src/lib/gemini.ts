@@ -92,6 +92,36 @@ async function executeClientFallback(prompt: string): Promise<string> {
         console.warn("import.meta.env is not accessible:", e);
       }
     }
+
+    // Try browser-integrated local Gemini Nano first if no custom key is provided
+    if (!clientKey && typeof window !== "undefined") {
+      const win = window as any;
+      if (win.ai) {
+        try {
+          if (win.ai.languageModel) {
+            const capabilities = await win.ai.languageModel.capabilities();
+            if (capabilities.available !== "no") {
+              const session = await win.ai.languageModel.create();
+              const responseText = await session.prompt(prompt);
+              if (responseText) {
+                return `### Generated via Chrome Built-in AI (Gemini Nano)\n\n${responseText}`;
+              }
+            }
+          } else if (win.ai.assistant) {
+            const capabilities = await win.ai.assistant.capabilities();
+            if (capabilities.available !== "no") {
+              const session = await win.ai.assistant.create();
+              const responseText = await session.prompt(prompt);
+              if (responseText) {
+                return `### Generated via Chrome Built-in AI (Gemini Nano - Legacy API)\n\n${responseText}`;
+              }
+            }
+          }
+        } catch (nanoErr: any) {
+          console.warn("Chrome local window.ai failed, falling back to compiled engine:", nanoErr);
+        }
+      }
+    }
     
     if (clientKey && clientKey.trim().length > 10) {
       try {
@@ -101,9 +131,8 @@ async function executeClientFallback(prompt: string): Promise<string> {
         
         const candidateModels = [
           "gemini-3.5-flash",
-          "gemini-2.5-flash",
-          "gemini-2.0-flash",
-          "gemini-1.5-flash"
+          "gemini-3.1-flash-lite",
+          "gemini-flash-latest"
         ];
 
         let clientResponseText = "";
